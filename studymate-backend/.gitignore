@@ -1,9 +1,16 @@
-# Environment variables
+# Secret key aur credentials kabhi upload nahi honi chahiye
 .env
 
-# Python virtual environment
-venv/
-
-# Cache
+# Python cache files
 __pycache__/
 *.pyc
+
+# Virtual environment folder
+venv/
+env/
+
+# SQLite database file (local dev data, production mein alag DB use hoga)
+studymate.db
+
+# OS ki apni files
+.DS_Store

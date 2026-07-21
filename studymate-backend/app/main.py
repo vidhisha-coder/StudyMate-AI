@@ -1,0 +1,100 @@
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+
+
+# Database
+from app.database import Base, engine
+
+
+# Models (tables create karne ke liye)
+import app.models
+
+
+# Routers
+from app.api.auth import router as auth_router
+from app.api.ai import router as ai_router
+
+
+
+# Create database tables
+Base.metadata.create_all(bind=engine)
+
+
+
+# FastAPI App
+app = FastAPI(
+
+    title="StudyMate AI Backend",
+
+    description="AI-powered Study Assistant Backend",
+
+    version="1.0.0"
+
+)
+
+
+
+# CORS Configuration
+
+app.add_middleware(
+
+    CORSMiddleware,
+
+    allow_origins=["*"],
+
+    allow_credentials=True,
+
+    allow_methods=["*"],
+
+    allow_headers=["*"],
+
+)
+
+
+
+# Root Route
+
+@app.get("/")
+def root():
+
+    return {
+
+        "message": "🚀 StudyMate AI Backend Running Successfully"
+
+    }
+
+
+
+
+# Health Check
+
+@app.get("/health")
+def health():
+
+    return {
+
+        "status": "healthy"
+
+    }
+
+
+
+
+# Authentication Routes
+
+app.include_router(
+
+    auth_router
+
+)
+
+
+
+
+# AI Routes
+
+app.include_router(
+
+    ai_router
+
+)

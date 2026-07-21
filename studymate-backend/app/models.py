@@ -32,3 +32,31 @@ class User(Base):
     password = Column(
         String
     )
+
+
+
+class ChatHistory(Base):
+
+    __tablename__ = "chat_history"
+
+
+    id = Column(
+        Integer,
+        primary_key=True,
+        index=True
+    )
+
+
+    user_email = Column(
+        String
+    )
+
+
+    prompt = Column(
+        String
+    )
+
+
+    response = Column(
+        String
+    )

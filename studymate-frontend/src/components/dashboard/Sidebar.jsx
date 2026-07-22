@@ -1,18 +1,45 @@
 import React from 'react';
-import { NavLink } from 'react-router-dom';
-import { LayoutDashboard, UploadCloud, HelpCircle, MessageSquare, User, LogOut } from 'lucide-react';
+import { NavLink, useNavigate } from 'react-router-dom';
+import { 
+  LayoutDashboard, 
+  UploadCloud, 
+  HelpCircle, 
+  MessageSquare, 
+  User, 
+  LogOut, 
+  Layers, 
+  BarChart3,
+  Calendar
+} from 'lucide-react';
 
 export default function Sidebar() {
+  const navigate = useNavigate();
+
   const menuItems = [
     { name: 'Dashboard', icon: <LayoutDashboard size={18} />, path: '/dashboard' },
+    { name: 'Study Planner', icon: <Calendar size={18} />, path: '/planner' },
     { name: 'Upload Notes', icon: <UploadCloud size={18} />, path: '/upload' },
     { name: 'Quiz', icon: <HelpCircle size={18} />, path: '/quiz' },
+    { name: 'Flashcards', icon: <Layers size={18} />, path: '/flashcard' },
+    { name: 'Analytics', icon: <BarChart3 size={18} />, path: '/analytics' },
     { name: 'AI Tutor', icon: <MessageSquare size={18} />, path: '/chat' },
     { name: 'Profile', icon: <User size={18} />, path: '/profile' },
   ];
 
+  // Logout Handler Function
+  const handleLogout = () => {
+    // LocalStorage se auth credentials clear kar rhe hain
+    localStorage.removeItem("token");
+    localStorage.removeItem("user"); // Agar user object save kiya ho toh
+
+    // Confirmation Toast or Alert
+    alert("Logged out successfully!");
+
+    // Login page pe redirect
+    navigate("/login");
+  };
+
   return (
-    // Changed h-screen to h-full to prevent duplicate container calculations
     <aside className="w-64 h-full flex-shrink-0 bg-white/60 backdrop-blur-2xl border-r border-indigo-100/40 flex flex-col justify-between p-6 relative z-30 shadow-[4px_0_24px_-10px_rgba(79,70,229,0.05)]">
       <div className="space-y-10 relative z-10">
         
@@ -38,7 +65,6 @@ export default function Sidebar() {
                 }`
               }
             >
-              {/* Cleaned up the inner layout for better rendering performance */}
               {({ isActive }) => (
                 <>
                   <span className={`transition-transform duration-200 group-hover:scale-105 ${
@@ -61,7 +87,10 @@ export default function Sidebar() {
 
       {/* Action Footer Button Tray Area */}
       <div className="relative z-10">
-        <button className="w-full flex items-center gap-3.5 px-4 py-3.5 bg-rose-50 hover:bg-rose-100/80 border border-rose-100 text-rose-600 rounded-2xl text-[14px] font-bold tracking-tight transition-all duration-200 shadow-sm group active:scale-[0.98]">
+        <button 
+          onClick={handleLogout}
+          className="w-full flex items-center gap-3.5 px-4 py-3.5 bg-rose-50 hover:bg-rose-100/80 border border-rose-100 text-rose-600 rounded-2xl text-[14px] font-bold tracking-tight transition-all duration-200 shadow-sm group active:scale-[0.98]"
+        >
           <LogOut size={18} className="transition-transform group-hover:translate-x-0.5" />
           Logout User
         </button>

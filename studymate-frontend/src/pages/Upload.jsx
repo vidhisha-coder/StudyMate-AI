@@ -1,8 +1,9 @@
 import React, { useState } from "react";
 import { summarizePDF } from "../services/uploadService";
 import { motion, AnimatePresence } from "framer-motion";
-import { FileText, Sparkles, UploadCloud, Copy, RefreshCw } from "lucide-react";
+import { FileText, Sparkles, UploadCloud, Copy, RefreshCw, Download, FileDown } from "lucide-react";
 import { summarizeNotes } from "../services/notesService";
+import jsPDF from "jspdf";
 
 export default function Upload() {
   const [activeTab, setActiveTab] = useState("paste"); // "paste" or "file"
@@ -12,64 +13,96 @@ export default function Upload() {
   const [dragActive, setDragActive] = useState(false);
   const [selectedFile, setSelectedFile] = useState(null);
 
-  const handleSummarize = async () => {
+ const handleSummarize = async () => {
+    // PDF Upload
+    if (activeTab === "file") {
+      if (!selectedFile) {
+        alert("Please select a PDF.");
+        return;
+      }
 
-  // PDF Upload
-  if (activeTab === "file") {
+      try {
+        setLoading(true);
+        const res = await summarizePDF(selectedFile);
+        setSummary(res.summary);
+      } catch (error) {
+        console.error(error);
+        alert("Failed to summarize PDF.");
+      } finally {
+        setLoading(false);
+      }
 
-    if (!selectedFile) {
-      alert("Please select a PDF.");
+      return;
+    }
+
+    // Paste Notes
+    if (!notes.trim()) {
+      alert("Please enter your notes.");
       return;
     }
 
     try {
       setLoading(true);
-
-      const res = await summarizePDF(selectedFile);
-
-      setSummary(res.summary);
-
+      const resSummary = await summarizeNotes(notes);
+      setSummary(resSummary);
     } catch (error) {
-
       console.error(error);
-
-      alert("Failed to summarize PDF.");
-
+      alert("Failed to generate summary.");
     } finally {
-
       setLoading(false);
-
     }
+  };
 
-    return;
-  }
+  // --- Download handlers ---
+  const handleDownloadTXT = () => {
+    if (!summary) return;
+    const element = document.createElement("a");
+    const file = new Blob([summary], { type: "text/plain" });
+    element.href = URL.createObjectURL(file);
+    element.download = "StudyMate_AI_Summary.txt";
+    document.body.appendChild(element);
+    element.click();
+    document.body.removeChild(element);
+  };
 
-  // Paste Notes
-  if (!notes.trim()) {
-    alert("Please enter your notes.");
-    return;
-  }
+  const handleDownloadPDF = () => {
+    if (!summary) return;
+    try {
+      const doc = new jsPDF();
 
-  try {
+      // Header Banner
+      doc.setFillColor(79, 70, 229); // Indigo
+      doc.rect(0, 0, 210, 22, "F");
 
-    setLoading(true);
+      doc.setTextColor(255, 255, 255);
+      doc.setFontSize(14);
+      doc.setFont("helvetica", "bold");
+      doc.text("StudyMate AI - Executive Summary", 14, 15);
 
-    const resSummary = await summarizeNotes(notes);
+      // Body Content
+      doc.setTextColor(30, 41, 59);
+      doc.setFontSize(10);
+      doc.setFont("helvetica", "normal");
 
-    setSummary(resSummary);
+      // Auto text wrapping
+      const splitText = doc.splitTextToSize(summary, 180);
+      let y = 32;
 
-  } catch (error) {
+      splitText.forEach((line) => {
+        if (y > 280) {
+          doc.addPage();
+          y = 20;
+        }
+        doc.text(line, 14, y);
+        y += 6;
+      });
 
-    console.error(error);
-
-    alert("Failed to generate summary.");
-
-  } finally {
-
-    setLoading(false);
-
-  }
-};
+      doc.save("StudyMate_AI_Summary.pdf");
+    } catch (error) {
+      console.error("PDF generation error:", error);
+      alert("Could not generate PDF.");
+    }
+  };
 
   const handleDrag = (e) => {
     e.preventDefault();
@@ -82,19 +115,14 @@ export default function Upload() {
   };
 
   const handleDrop = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setDragActive(false);
 
-  e.preventDefault();
-  e.stopPropagation();
-
-  setDragActive(false);
-
-  if (e.dataTransfer.files && e.dataTransfer.files[0]) {
-
-    setSelectedFile(e.dataTransfer.files[0]);
-
-  }
-
-};
+    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+      setSelectedFile(e.dataTransfer.files[0]);
+    }
+  };
 
   return (
     <div className="w-full h-full grid grid-rows-[auto_1fr] overflow-hidden px-6 pt-5 pb-6 gap-5 box-border">
@@ -188,23 +216,21 @@ export default function Upload() {
                     <label className="mt-4 px-4 py-2 bg-white hover:bg-slate-50 border border-slate-200 shadow-sm text-[13px] font-bold text-slate-700 rounded-xl cursor-pointer transition-all">
                       Browse Files
                       <input
-  type="file"
-  className="hidden"
-  accept=".pdf"
-  onChange={(e) => {
-    if (e.target.files[0]) {
-      setSelectedFile(e.target.files[0]);
-    }
-  }}
-/>
+                        type="file"
+                        className="hidden"
+                        accept=".pdf"
+                        onChange={(e) => {
+                          if (e.target.files[0]) {
+                            setSelectedFile(e.target.files[0]);
+                          }
+                        }}
+                      />
                     </label>
-                    {
-selectedFile && (
-<p className="mt-3 text-indigo-600 text-sm font-semibold">
-    📄 {selectedFile.name}
-</p>
-)
-}
+                    {selectedFile && (
+                      <p className="mt-3 text-indigo-600 text-sm font-semibold">
+                        📄 {selectedFile.name}
+                      </p>
+                    )}
                   </motion.div>
                 )}
               </AnimatePresence>
@@ -234,16 +260,16 @@ selectedFile && (
             AI Output Engine
           </h2>
           <div className="bg-white border border-slate-200 p-6 rounded-[32px] shadow-sm flex flex-col flex-1 min-h-0 relative overflow-hidden">
-            <div className="w-full h-full overflow-y-auto custom-scrollbar min-h-0 flex flex-col">
+            <div className="w-full h-full overflow-y-auto custom-scrollbar min-h-0 flex flex-col justify-between">
               <AnimatePresence mode="wait">
                 {summary ? (
                   <motion.div
                     key="summary-rendered"
                     initial={{ opacity: 0, scale: 0.98 }}
                     animate={{ opacity: 1, scale: 1 }}
-                    className="w-full flex flex-col justify-between"
+                    className="w-full flex flex-col justify-between h-full"
                   >
-                    <div>
+                    <div className="overflow-y-auto custom-scrollbar pr-1 flex-1">
                       <div className="flex justify-between items-center border-b border-slate-200/60 pb-3 mb-3">
                         <span className="text-[11px] font-bold uppercase tracking-widest text-indigo-600">Response Generated</span>
                         <button 
@@ -257,9 +283,28 @@ selectedFile && (
                           <Copy size={15} />
                         </button>
                       </div>
-                      <p className="text-[13.5px] leading-relaxed font-medium text-slate-700 whitespace-pre-wrap select-text selection:bg-indigo-500/20">
+                      <p className="text-[13.5px] leading-relaxed font-medium text-slate-700 whitespace-pre-wrap select-text selection:bg-indigo-500/20 pb-4">
                         {summary}
                       </p>
+                    </div>
+
+                    {/* Action Download Buttons Box */}
+                    <div className="pt-3 mt-3 border-t border-slate-100 flex items-center justify-end gap-2 flex-shrink-0">
+                      <button
+                        onClick={handleDownloadTXT}
+                        className="flex items-center gap-1.5 text-xs font-bold text-slate-600 bg-slate-100 hover:bg-slate-200 px-3.5 py-2 rounded-xl transition-all"
+                      >
+                        <FileDown size={14} className="text-slate-500" />
+                        Download TXT
+                      </button>
+
+                      <button
+                        onClick={handleDownloadPDF}
+                        className="flex items-center gap-1.5 text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-700 px-3.5 py-2 rounded-xl shadow-sm transition-all"
+                      >
+                        <Download size={14} />
+                        Download PDF
+                      </button>
                     </div>
                   </motion.div>
                 ) : (

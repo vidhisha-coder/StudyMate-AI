@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { summarizePDF } from "../services/uploadService";
 import { motion, AnimatePresence } from "framer-motion";
 import { FileText, Sparkles, UploadCloud, Copy, RefreshCw } from "lucide-react";
 import { summarizeNotes } from "../services/notesService";
@@ -9,24 +10,66 @@ export default function Upload() {
   const [summary, setSummary] = useState("");
   const [loading, setLoading] = useState(false);
   const [dragActive, setDragActive] = useState(false);
+  const [selectedFile, setSelectedFile] = useState(null);
 
   const handleSummarize = async () => {
-    if (!notes.trim()) {
-      alert("Please enter your notes.");
+
+  // PDF Upload
+  if (activeTab === "file") {
+
+    if (!selectedFile) {
+      alert("Please select a PDF.");
       return;
     }
 
     try {
       setLoading(true);
-      const resSummary = await summarizeNotes(notes);
-      setSummary(resSummary);
+
+      const res = await summarizePDF(selectedFile);
+
+      setSummary(res.summary);
+
     } catch (error) {
+
       console.error(error);
-      alert("Failed to generate summary.");
+
+      alert("Failed to summarize PDF.");
+
     } finally {
+
       setLoading(false);
+
     }
-  };
+
+    return;
+  }
+
+  // Paste Notes
+  if (!notes.trim()) {
+    alert("Please enter your notes.");
+    return;
+  }
+
+  try {
+
+    setLoading(true);
+
+    const resSummary = await summarizeNotes(notes);
+
+    setSummary(resSummary);
+
+  } catch (error) {
+
+    console.error(error);
+
+    alert("Failed to generate summary.");
+
+  } finally {
+
+    setLoading(false);
+
+  }
+};
 
   const handleDrag = (e) => {
     e.preventDefault();
@@ -39,13 +82,19 @@ export default function Upload() {
   };
 
   const handleDrop = (e) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setDragActive(false);
-    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
-      alert(`File "${e.dataTransfer.files[0].name}" dropped! Integrate file parsing here.`);
-    }
-  };
+
+  e.preventDefault();
+  e.stopPropagation();
+
+  setDragActive(false);
+
+  if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+
+    setSelectedFile(e.dataTransfer.files[0]);
+
+  }
+
+};
 
   return (
     <div className="w-full h-full grid grid-rows-[auto_1fr] overflow-hidden px-6 pt-5 pb-6 gap-5 box-border">
@@ -138,8 +187,24 @@ export default function Upload() {
                     <p className="text-[12px] font-medium text-slate-400 mt-1">Accepts PDF, DOCX, or TXT up to 16MB</p>
                     <label className="mt-4 px-4 py-2 bg-white hover:bg-slate-50 border border-slate-200 shadow-sm text-[13px] font-bold text-slate-700 rounded-xl cursor-pointer transition-all">
                       Browse Files
-                      <input type="file" className="hidden" accept=".pdf,.docx,.txt" />
+                      <input
+  type="file"
+  className="hidden"
+  accept=".pdf"
+  onChange={(e) => {
+    if (e.target.files[0]) {
+      setSelectedFile(e.target.files[0]);
+    }
+  }}
+/>
                     </label>
+                    {
+selectedFile && (
+<p className="mt-3 text-indigo-600 text-sm font-semibold">
+    📄 {selectedFile.name}
+</p>
+)
+}
                   </motion.div>
                 )}
               </AnimatePresence>

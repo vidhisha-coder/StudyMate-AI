@@ -1,3 +1,4 @@
+import { askAI } from "../services/chatService";
 import React, { useState, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { 
@@ -8,18 +9,46 @@ import {
   Paperclip, 
   ShieldCheck, 
   History, 
-  Trash2 
+  Trash2,
+  Clock,
+  MessageSquare,
+  Plus,
+  X
 } from "lucide-react";
 
 export default function Chat() {
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
+  const [showHistoryModal, setShowHistoryModal] = useState(false);
   const chatContainerRef = useRef(null);
 
+  // Active Chat Session Messages
   const [messages, setMessages] = useState([
     {
       role: "assistant",
       content: "Hello Rudra! I am your AI core assistant runtime tutor module. Paste an architectural target matrix, request a conceptual code breakdown for your projects, or test your current comprehension logs here.",
+    }
+  ]);
+
+  // Saved Chat Sessions History (Mock / Local State)
+  const [chatHistory, setChatHistory] = useState([
+    {
+      id: "session-1",
+      title: "React Full-Stack Rendering Breakdown",
+      date: "Yesterday, 4:15 PM",
+      messages: [
+        { role: "user", content: "Deconstruct Full-Stack React Rendering" },
+        { role: "assistant", content: "React rendering involves client-side hydration, server components, and virtual DOM diffing..." }
+      ]
+    },
+    {
+      id: "session-2",
+      title: "B-Tree Node Balancing Steps",
+      date: "Jul 20, 2026",
+      messages: [
+        { role: "user", content: "Explain B-Tree Node Balancing Steps" },
+        { role: "assistant", content: "B-Trees balance through node splitting when keys exceed M-1..." }
+      ]
     }
   ]);
 
@@ -29,34 +58,55 @@ export default function Chat() {
     "Simulate a Technical Placement Mock Question"
   ];
 
- useEffect(() => {
-  if (chatContainerRef.current) {
-    chatContainerRef.current.scrollTo({
-      top: chatContainerRef.current.scrollHeight,
-      behavior: "smooth",
-    });
-  }
-}, [messages, loading]);
+  useEffect(() => {
+    if (chatContainerRef.current) {
+      chatContainerRef.current.scrollTo({
+        top: chatContainerRef.current.scrollHeight,
+        behavior: "smooth",
+      });
+    }
+  }, [messages, loading]);
 
-  const handleSendMessage = (e) => {
+  const handleSendMessage = async (e) => {
     e.preventDefault();
+
     if (!input.trim() || loading) return;
 
     const userMsg = input;
     setInput("");
-    setMessages((prev) => [...prev, { role: "user", content: userMsg }]);
+
+    setMessages((prev) => [
+      ...prev,
+      { role: "user", content: userMsg },
+    ]);
+
     setLoading(true);
 
-    setTimeout(() => {
+    try {
+      const aiReply = await askAI(userMsg);
+
       setMessages((prev) => [
         ...prev,
         {
           role: "assistant",
-          content: `Processed statement entry context logs: "${userMsg}". Here is your pedagogical response breakdown based on your active metrics at Udhna. Let me know if you need to build a structural evaluation quiz next!`,
+          content: aiReply.response,
         },
       ]);
-      setLoading(false);
-    }, 1200);
+    } catch (err) {
+      console.error(err);
+
+      setMessages((prev) => [
+        ...prev,
+        {
+          role: "assistant",
+          content:
+            err.response?.data?.detail ||
+            "Something went wrong while contacting the AI.",
+        },
+      ]);
+    }
+
+    setLoading(false);
   };
 
   const clearChatLogs = () => {
@@ -68,15 +118,22 @@ export default function Chat() {
     ]);
   };
 
+  // Restore a previous chat session
+  const loadPastChat = (session) => {
+    setMessages(session.messages);
+    setShowHistoryModal(false);
+  };
+
+  // Start a brand new session
+  const startNewChat = () => {
+    clearChatLogs();
+    setShowHistoryModal(false);
+  };
+
   return (
-    /* 
-      👉 CHANGED TO GRID LAYOUT: 
-      Locks the top container to exactly the parent height and divides it into 
-      two clean horizontal rows: Auto-height for Header, and remaining fraction (1fr) for Workspace.
-    */
-    <div className="w-full h-full grid grid-rows-[auto_1fr] overflow-hidden px-6 pt-5 pb-6 gap-5 box-border">
+    <div className="w-full h-full grid grid-rows-[auto_1fr] overflow-hidden px-6 pt-5 pb-6 gap-5 box-border relative">
       
-      {/* 1. Header Section - Strict Sizing */}
+      {/* 1. Header Section */}
       <div className="w-full flex items-start justify-between gap-4 self-start">
         <div>
           <h1 className="text-2xl md:text-[28px] font-black tracking-tight text-slate-900 flex items-center gap-2.5 leading-none">
@@ -88,16 +145,25 @@ export default function Chat() {
           </p>
         </div>
 
-        <button 
-          onClick={clearChatLogs}
-          className="px-4 py-2 bg-white border border-slate-200 hover:border-slate-300 text-slate-500 hover:text-rose-600 font-bold text-[12px] rounded-xl flex items-center gap-1.5 transition-all active:scale-[0.98] shadow-sm flex-shrink-0"
-        >
-          <Trash2 size={14} /> Clear System History
-        </button>
+        {/* Action Buttons */}
+        <div className="flex items-center gap-2 flex-shrink-0">
+          <button 
+            onClick={() => setShowHistoryModal(true)}
+            className="px-4 py-2 bg-indigo-50 border border-indigo-200/60 hover:bg-indigo-100/70 text-indigo-700 font-bold text-[12px] rounded-xl flex items-center gap-1.5 transition-all active:scale-[0.98] shadow-sm"
+          >
+            <Clock size={14} /> Chat History
+          </button>
+
+          <button 
+            onClick={clearChatLogs}
+            className="px-4 py-2 bg-white border border-slate-200 hover:border-slate-300 text-slate-500 hover:text-rose-600 font-bold text-[12px] rounded-xl flex items-center gap-1.5 transition-all active:scale-[0.98] shadow-sm"
+          >
+            <Trash2 size={14} /> Clear System History
+          </button>
+        </div>
       </div>
 
-      {/* 2. Main Workspace - Forced Grid Layout Framework */}
-      {/* 👉 CHANGED TO grid-cols: Strict 320px sidebar on large screens, remaining space for chat terminal */}
+      {/* 2. Main Workspace */}
       <div className="w-full grid grid-cols-1 lg:grid-cols-[320px_1fr] gap-5 overflow-hidden min-h-0 h-full">
         
         {/* Left Action Sidebar Panel */}
@@ -132,82 +198,79 @@ export default function Chat() {
           </div>
         </div>
 
-        {/* Right Chat Terminal Interface - Explicitly locked grid child */}
-        {/* 👉 CHANGED TO grid-rows: Forces message display to 1fr and keys the input pane strictly to auto-bottom */}
+        {/* Right Chat Terminal Interface */}
         <div className="h-full grid grid-rows-[1fr_auto] rounded-[32px] border border-slate-200 bg-white shadow-sm overflow-hidden min-h-0">
           
           {/* Scrollable View Containment Area */}
-          {/* Scrollable View Containment Area */}
-{/* 👇 ADDED THE REF HERE AND REMOVED THE OLD ANCHOR DIV FROM THE BOTTOM */}
-<div 
-  ref={chatContainerRef} 
-  className="overflow-y-auto p-6 space-y-4 bg-slate-50/50 min-h-0 w-full relative"
->
-  <AnimatePresence initial={false}>
-    {messages.map((msg, idx) => {
-      const messageId = `msg-${idx}-${msg.role}`;
-      const isUser = msg.role === "user";
-
-      return (
-        <div
-          key={messageId}
-          className={`w-full flex gap-3 min-w-0 ${
-            isUser ? "justify-end" : "justify-start"
-          }`}
-        >
-          <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.2 }}
-            className={`flex gap-3 max-w-[85%] md:max-w-[75%] min-w-0 ${
-              isUser ? "flex-row-reverse" : "flex-row"
-            }`}
+          <div 
+            ref={chatContainerRef} 
+            className="overflow-y-auto p-6 space-y-4 bg-slate-50/50 min-h-0 w-full relative"
           >
-            {/* Avatar Cluster */}
-            <div className={`w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0 border select-none ${
-              isUser 
-                ? "bg-slate-100 border-slate-200 text-slate-700" 
-                : "bg-indigo-50 border-indigo-100 text-indigo-600"
-            }`}>
-              {isUser ? <User size={14} /> : <Bot size={14} />}
-            </div>
+            <AnimatePresence initial={false}>
+              {messages.map((msg, idx) => {
+                const messageId = `msg-${idx}-${msg.role}`;
+                const isUser = msg.role === "user";
 
-            {/* Bubble Copy */}
-            <div className={`px-5 py-3 rounded-2xl text-[13.5px] font-medium leading-relaxed tracking-tight border break-words overflow-wrap-anywhere min-w-0 ${
-              isUser
-                ? "bg-indigo-600 text-white border-indigo-700 shadow-sm"
-                : "bg-white border-slate-200 text-slate-800"
-            }`}>
-              {msg.content}
-            </div>
-          </motion.div>
-        </div>
-      );
-    })}
+                return (
+                  <div
+                    key={messageId}
+                    className={`w-full flex gap-3 min-w-0 ${
+                      isUser ? "justify-end" : "justify-start"
+                    }`}
+                  >
+                    <motion.div
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ duration: 0.2 }}
+                      className={`flex gap-3 max-w-[85%] md:max-w-[75%] min-w-0 ${
+                        isUser ? "flex-row-reverse" : "flex-row"
+                      }`}
+                    >
+                      {/* Avatar Cluster */}
+                      <div className={`w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0 border select-none ${
+                        isUser 
+                          ? "bg-slate-100 border-slate-200 text-slate-700" 
+                          : "bg-indigo-50 border-indigo-100 text-indigo-600"
+                      }`}>
+                        {isUser ? <User size={14} /> : <Bot size={14} />}
+                      </div>
 
-    {/* Thinking State Animation Container */}
-    {loading && (
-      <div className="w-full flex justify-start min-w-0">
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          className="flex gap-3 max-w-[85%] min-w-0"
-        >
-          <div className="w-8 h-8 rounded-xl bg-indigo-50 border flex items-center justify-center text-indigo-600 select-none">
-            <Sparkles size={14} className="animate-pulse" />
+                      {/* Bubble Copy */}
+                      <div className={`px-5 py-3 rounded-2xl text-[13.5px] font-medium leading-relaxed tracking-tight border break-words overflow-wrap-anywhere min-w-0 ${
+                        isUser
+                          ? "bg-indigo-600 text-white border-indigo-700 shadow-sm"
+                          : "bg-white border-slate-200 text-slate-800"
+                      }`}>
+                        {msg.content}
+                      </div>
+                    </motion.div>
+                  </div>
+                );
+              })}
+
+              {/* Thinking State Animation Container */}
+              {loading && (
+                <div className="w-full flex justify-start min-w-0">
+                  <motion.div
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    className="flex gap-3 max-w-[85%] min-w-0"
+                  >
+                    <div className="w-8 h-8 rounded-xl bg-indigo-50 border flex items-center justify-center text-indigo-600 select-none">
+                      <Sparkles size={14} className="animate-pulse" />
+                    </div>
+                    <div className="bg-white border border-slate-200 rounded-2xl px-5 py-3 flex items-center gap-1.5 shadow-sm">
+                      <span className="w-2 h-2 bg-slate-400 rounded-full animate-bounce [animation-delay:-0.3s]"></span>
+                      <span className="w-2 h-2 bg-slate-400 rounded-full animate-bounce [animation-delay:-0.15s]"></span>
+                      <span className="w-2 h-2 bg-slate-400 rounded-full animate-bounce"></span>
+                    </div>
+                  </motion.div>
+                </div>
+              )}
+            </AnimatePresence>
           </div>
-          <div className="bg-white border border-slate-200 rounded-2xl px-5 py-3 flex items-center gap-1.5 shadow-sm">
-            <span className="w-2 h-2 bg-slate-400 rounded-full animate-bounce [animation-delay:-0.3s]"></span>
-            <span className="w-2 h-2 bg-slate-400 rounded-full animate-bounce [animation-delay:-0.15s]"></span>
-            <span className="w-2 h-2 bg-slate-400 rounded-full animate-bounce"></span>
-          </div>
-        </motion.div>
-      </div>
-    )}
-  </AnimatePresence>
-</div>
 
-          {/* Locked Input Tray Action Area */}
+          {/* Input Area */}
           <div className="p-4 bg-white border-t border-slate-200">
             <form onSubmit={handleSendMessage} className="relative flex items-center w-full">
               <button 
@@ -242,6 +305,76 @@ export default function Chat() {
 
         </div>
       </div>
+
+      {/* 3. Slide-Over Drawer for Chat History */}
+      <AnimatePresence>
+        {showHistoryModal && (
+          <div className="fixed inset-0 z-50 flex justify-end bg-slate-900/30 backdrop-blur-sm">
+            <motion.div 
+              initial={{ x: "100%" }}
+              animate={{ x: 0 }}
+              exit={{ x: "100%" }}
+              transition={{ type: "spring", damping: 25, stiffness: 200 }}
+              className="w-full max-w-md h-full bg-white border-l border-slate-200 p-6 flex flex-col justify-between shadow-2xl"
+            >
+              <div>
+                {/* Drawer Header */}
+                <div className="flex items-center justify-between pb-4 border-b border-slate-200">
+                  <div className="flex items-center gap-2">
+                    <Clock size={18} className="text-indigo-600" />
+                    <h3 className="text-lg font-black text-slate-900">Chat History Logs</h3>
+                  </div>
+                  <button 
+                    onClick={() => setShowHistoryModal(false)}
+                    className="p-1 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-lg transition-all"
+                  >
+                    <X size={18} />
+                  </button>
+                </div>
+
+                {/* New Chat Quick Action */}
+                <button 
+                  onClick={startNewChat}
+                  className="w-full mt-4 p-3 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs rounded-xl flex items-center justify-center gap-2 transition-all shadow-sm"
+                >
+                  <Plus size={16} /> Start New Chat Session
+                </button>
+
+                {/* History Items List */}
+                <div className="mt-6 space-y-3 overflow-y-auto max-h-[calc(100vh-180px)] pr-1">
+                  {chatHistory.map((session) => (
+                    <div 
+                      key={session.id}
+                      onClick={() => loadPastChat(session)}
+                      className="p-4 bg-slate-50 hover:bg-indigo-50/60 border border-slate-200 hover:border-indigo-200/80 rounded-2xl cursor-pointer transition-all space-y-1.5 group"
+                    >
+                      <div className="flex items-center justify-between">
+                        <span className="text-[11px] font-bold text-indigo-600 flex items-center gap-1">
+                          <MessageSquare size={12} /> {session.date}
+                        </span>
+                      </div>
+                      <h4 className="text-[13.5px] font-bold text-slate-800 group-hover:text-indigo-900 line-clamp-1">
+                        {session.title}
+                      </h4>
+                      <p className="text-[12px] font-medium text-slate-400 line-clamp-1">
+                        {session.messages[0]?.content}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Drawer Footer */}
+              <div className="pt-4 border-t border-slate-200 text-center">
+                <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">
+                  StudyMate AI Memory Vault
+                </span>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
     </div>
   );
 }

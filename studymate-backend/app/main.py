@@ -1,5 +1,6 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from app.api.quiz import router as quiz_router
 
 # Database
 from app.database import Base, engine
@@ -57,3 +58,6 @@ app.include_router(upload_router)
 
 # PDF Summarization Routes
 app.include_router(summarize_router)
+
+# Quiz Routes
+app.include_router(quiz_router)

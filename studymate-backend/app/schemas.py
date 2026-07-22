@@ -29,9 +29,6 @@ class UserResponse(BaseModel):
         from_attributes = True
 
 
-# ==========================
-# NOTES HISTORY
-# ==========================
 class NoteHistoryResponse(BaseModel):
     id: int
     title: str
@@ -43,9 +40,6 @@ class NoteHistoryResponse(BaseModel):
         from_attributes = True
 
 
-# ==========================
-# FLASHCARDS
-# ==========================
 class FlashcardGenerateRequest(BaseModel):
     notes: str
     topic: Optional[str] = "General"
@@ -63,9 +57,6 @@ class FlashcardResponse(BaseModel):
         from_attributes = True
 
 
-# ==========================
-# QUIZ
-# ==========================
 class QuizSubmitRequest(BaseModel):
     topic: Optional[str] = "General"
     score: int
@@ -83,9 +74,6 @@ class QuizResultResponse(BaseModel):
         from_attributes = True
 
 
-# ==========================
-# STUDY PLANNER
-# ==========================
 class StudyTaskCreate(BaseModel):
     subject: str
     task: str
@@ -110,9 +98,6 @@ class StudyTaskResponse(BaseModel):
         from_attributes = True
 
 
-# ==========================
-# ACHIEVEMENTS
-# ==========================
 class AchievementResponse(BaseModel):
     id: int
     code: str

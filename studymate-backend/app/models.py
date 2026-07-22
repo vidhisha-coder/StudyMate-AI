@@ -24,9 +24,6 @@ class ChatHistory(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
 
 
-# ==========================
-# NOTES HISTORY
-# ==========================
 class NoteHistory(Base):
     __tablename__ = "note_history"
 
@@ -38,9 +35,6 @@ class NoteHistory(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
 
 
-# ==========================
-# FLASHCARDS
-# ==========================
 class Flashcard(Base):
     __tablename__ = "flashcards"
 
@@ -52,9 +46,6 @@ class Flashcard(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
 
 
-# ==========================
-# QUIZ RESULTS (analytics/achievements ke liye zaroori)
-# ==========================
 class QuizResult(Base):
     __tablename__ = "quiz_results"
 
@@ -66,9 +57,6 @@ class QuizResult(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
 
 
-# ==========================
-# STUDY PLANNER
-# ==========================
 class StudyTask(Base):
     __tablename__ = "study_tasks"
 
@@ -81,9 +69,6 @@ class StudyTask(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
 
 
-# ==========================
-# ACHIEVEMENTS
-# ==========================
 class Achievement(Base):
     __tablename__ = "achievements"
 

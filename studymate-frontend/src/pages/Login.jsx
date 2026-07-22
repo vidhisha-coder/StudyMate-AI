@@ -17,21 +17,21 @@ const handleLogin = async (e) => {
   try {
     const response = await login(email, password);
 
-    // Save JWT Token
-    localStorage.setItem("token", response.data.access_token);
+    localStorage.setItem("token", response.access_token);
 
     alert("Login Successful!");
 
     navigate("/dashboard");
-  } catch (error) {
-  console.log("FULL ERROR:", error);
-  console.log("RESPONSE:", error.response?.data);
 
-  alert(
-    JSON.stringify(error.response?.data) || 
-    "Invalid Email or Password"
-  );
-}
+  } catch (error) {
+
+    console.error(error);
+
+    alert(
+      error.response?.data?.detail ||
+      "Invalid Email or Password"
+    );
+  }
 };
 
   return (

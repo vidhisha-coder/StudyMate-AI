@@ -1,13 +1,11 @@
 import api from "./api";
 
-export const summarizeNotes = async (notes) => {
+export const askAI = async (prompt) => {
   const token = localStorage.getItem("token");
 
-  const res = await api.post(
-    "/summarize/",
-    {
-      text: notes,
-    },
+  const response = await api.post(
+    "/ai/ask",
+    { prompt },
     {
       headers: {
         Authorization: `Bearer ${token}`,
@@ -15,5 +13,5 @@ export const summarizeNotes = async (notes) => {
     }
   );
 
-  return res.data.summary;
+  return response.data;
 };

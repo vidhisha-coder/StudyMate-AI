@@ -9,7 +9,8 @@ import {
   LogOut, 
   Layers, 
   BarChart3,
-  Calendar
+  Calendar,
+  Trophy // 👈 1. Trophy Icon Import Kiya
 } from 'lucide-react';
 
 export default function Sidebar() {
@@ -21,6 +22,7 @@ export default function Sidebar() {
     { name: 'Upload Notes', icon: <UploadCloud size={18} />, path: '/upload' },
     { name: 'Quiz', icon: <HelpCircle size={18} />, path: '/quiz' },
     { name: 'Flashcards', icon: <Layers size={18} />, path: '/flashcard' },
+    { name: 'Achievements', icon: <Trophy size={18} />, path: '/achievements' }, // 👈 2. Achievements Route Add Kiya
     { name: 'Analytics', icon: <BarChart3 size={18} />, path: '/analytics' },
     { name: 'AI Tutor', icon: <MessageSquare size={18} />, path: '/chat' },
     { name: 'Profile', icon: <User size={18} />, path: '/profile' },
@@ -28,14 +30,10 @@ export default function Sidebar() {
 
   // Logout Handler Function
   const handleLogout = () => {
-    // LocalStorage se auth credentials clear kar rhe hain
     localStorage.removeItem("token");
-    localStorage.removeItem("user"); // Agar user object save kiya ho toh
+    localStorage.removeItem("user");
 
-    // Confirmation Toast or Alert
     alert("Logged out successfully!");
-
-    // Login page pe redirect
     navigate("/login");
   };
 

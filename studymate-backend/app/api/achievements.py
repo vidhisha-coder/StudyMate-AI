@@ -9,6 +9,7 @@ from app.models import (
     Flashcard,
     QuizResult,
     StudyTask,
+    UserStats,
 )
 from app.schemas import AchievementResponse
 
@@ -37,10 +38,6 @@ def _badge_rules(db: Session, user_email: str):
 
 
 def check_and_award_achievements(db: Session, user_email: str):
-    """
-    Baaki routers (notes, flashcards, quiz, planner) se call hota hai
-    har activity ke baad — automatically naye badges unlock kar deta hai.
-    """
     already_earned = {
         a.code for a in db.query(Achievement).filter(Achievement.user_email == user_email).all()
     }
@@ -64,7 +61,30 @@ def check_and_award_achievements(db: Session, user_email: str):
     return newly_earned
 
 
-@router.get("/", response_model=list[AchievementResponse])
+# 🚀 NEW: GET Stats API Endpoint
+@router.get("/stats")
+def get_user_stats(
+    db: Session = Depends(get_db),
+    email: str = Depends(get_current_user),
+):
+    stats = db.query(UserStats).filter(UserStats.user_email == email).first()
+
+    if not stats:
+        return {
+            "user_email": email,
+            "xp": 0,
+            "level": 1,
+            "study_streak": 0,
+            "total_notes": 0,
+            "total_flashcards": 0,
+            "total_quizzes": 0
+        }
+
+    return stats
+
+
+# 📜 GET Badges List
+@router.get("", response_model=list[AchievementResponse])
 def get_achievements(
     db: Session = Depends(get_db),
     email: str = Depends(get_current_user),

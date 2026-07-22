@@ -1,7 +1,5 @@
 from datetime import datetime
-
 from sqlalchemy import Column, Integer, String, Text, DateTime, Boolean
-
 from app.database import Base
 
 
@@ -78,3 +76,19 @@ class Achievement(Base):
     title = Column(String)
     description = Column(String)
     earned_at = Column(DateTime, default=datetime.utcnow)
+
+
+# 🚀 NEW: UserStats Model
+class UserStats(Base):
+    __tablename__ = "user_stats"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_email = Column(String, unique=True, index=True)
+
+    xp = Column(Integer, default=0)
+    level = Column(Integer, default=1)
+
+    study_streak = Column(Integer, default=0)
+    total_notes = Column(Integer, default=0)
+    total_flashcards = Column(Integer, default=0)
+    total_quizzes = Column(Integer, default=0)

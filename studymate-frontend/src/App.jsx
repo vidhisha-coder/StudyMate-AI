@@ -4,10 +4,11 @@ import Home from "./pages/Home";
 import Login from "./pages/Login";
 import Signup from "./pages/Signup";
 import Dashboard from "./pages/Dashboard";
-import StudyPlanner from "./pages/StudyPlanner"; // 👈 Study Planner Component Import Ho Gaya
+import StudyPlanner from "./pages/StudyPlanner";
 import Upload from "./pages/Upload";
 import Quiz from "./pages/Quiz";
 import Flashcard from "./pages/Flashcard"; 
+import Achievements from "./pages/Achievements"; // 👈 1. Achievements Page Import Kiya
 import Chat from "./pages/Chat";
 import Profile from "./pages/Profile";
 import NotFound from "./pages/NotFound";
@@ -27,10 +28,11 @@ function App() {
         {/* Dashboard Parent Route Wrapper (With Sidebar) */}
         <Route element={<MainLayout />}>
           <Route path="/dashboard" element={<Dashboard />} />
-          <Route path="/planner" element={<StudyPlanner />} /> {/* 👈 Study Planner Route Add Ho Gaya */}
+          <Route path="/planner" element={<StudyPlanner />} />
           <Route path="/upload" element={<Upload />} />
           <Route path="/quiz" element={<Quiz />} />
           <Route path="/flashcard" element={<Flashcard />} /> 
+          <Route path="/achievements" element={<Achievements />} /> {/* 👈 2. Achievements Route Add Ho Gaya */}
           <Route path="/analytics" element={<Analytics />} />
           <Route path="/chat" element={<Chat />} /> 
           <Route path="/profile" element={<Profile />} />

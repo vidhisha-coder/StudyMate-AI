@@ -24,9 +24,14 @@ const handleLogin = async (e) => {
 
     navigate("/dashboard");
   } catch (error) {
-    console.error(error);
-    alert(error.response?.data?.detail || "Invalid Email or Password");
-  }
+  console.log("FULL ERROR:", error);
+  console.log("RESPONSE:", error.response?.data);
+
+  alert(
+    JSON.stringify(error.response?.data) || 
+    "Invalid Email or Password"
+  );
+}
 };
 
   return (

@@ -1,65 +1,74 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-# Database & Models
+# Database
 from app.database import Base, engine
+
+# Import Models
 import app.models
 
-# Routers (Sabhi API Routers Import kiye hain)
+# Routers
 from app.api.auth import router as auth_router
 from app.api.ai import router as ai_router
 from app.api.upload import router as upload_router
 from app.api.summarize import router as summarize_router
 from app.api.quiz import router as quiz_router
 from app.api.planner import router as planner_router
-from app.api.notes import router as notes_router          # 👈 Notes Router
-from app.api.achievements import router as achievements_router  # 👈 Achievements & Stats Router
+from app.api.notes import router as notes_router
+from app.api.achievements import router as achievements_router
 from app.api.flashcards import router as flashcards_router
 from app.api.dashboard import router as dashboard_router
 from app.api.profile import router as profile_router
+from app.api.settings import router as settings_router
+from app.api.forget_password import router as forgot_password_router
 
-# Create database tables
+# Create Database Tables
 Base.metadata.create_all(bind=engine)
 
 # FastAPI App
 app = FastAPI(
     title="StudyMate AI Backend",
-    description="AI-powered Study Assistant Backend",
-    version="1.0.0"
+    description="AI-powered Personalized Learning Assistant",
+    version="1.0.0",
 )
 
-# CORS Configuration
+# CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=["*"],  # Change in production
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# Root Route
+# ---------------- Root ---------------- #
+
 @app.get("/")
 def root():
     return {
         "message": "🚀 StudyMate AI Backend Running Successfully"
     }
 
-# Health Check
+
 @app.get("/health")
 def health():
     return {
         "status": "healthy"
     }
 
-# Register All API Routers
+
+# ---------------- Register Routers ---------------- #
+
 app.include_router(auth_router)
 app.include_router(ai_router)
 app.include_router(upload_router)
 app.include_router(summarize_router)
 app.include_router(quiz_router)
 app.include_router(planner_router)
-app.include_router(notes_router)         # 👈 Added
-app.include_router(achievements_router)  # 👈 Added
+app.include_router(notes_router)
+app.include_router(achievements_router)
 app.include_router(flashcards_router)
 app.include_router(dashboard_router)
 app.include_router(profile_router)
+app.include_router(settings_router)
+app.include_router(forgot_password_router)

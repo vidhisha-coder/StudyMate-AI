@@ -4,7 +4,6 @@ from sqlalchemy.orm import Session
 from app.database import get_db
 from app.auth import get_current_user
 from app.models import Achievement, NoteHistory, Flashcard, QuizResult, StudyTask
-from app.schemas import AchievementResponse
 
 router = APIRouter(prefix="/achievements", tags=["Achievements"])
 
@@ -47,11 +46,45 @@ def check_and_award_achievements(db: Session, user_email: str):
     return newly_earned
 
 
-@router.get("/", response_model=list[AchievementResponse])
+@router.get("")
+@router.get("/")
 def get_achievements(db: Session = Depends(get_db), email: str = Depends(get_current_user)):
-    return (
+    # Auto-check if any new achievement criteria met
+    check_and_award_achievements(db, email)
+
+    unlocked_achievements = (
         db.query(Achievement)
         .filter(Achievement.user_email == email)
         .order_by(Achievement.earned_at.desc())
         .all()
     )
+
+    # Calculate metrics dynamically
+    unlocked_count = len(unlocked_achievements)
+    tasks_done = db.query(StudyTask).filter(
+        StudyTask.user_email == email, StudyTask.completed == True  # noqa: E712
+    ).count()
+
+    # Calculate XP (e.g., 50 XP per achievement + 20 XP per task completed)
+    total_xp = (unlocked_count * 50) + (tasks_done * 20)
+    
+    current_level = (total_xp // 100) + 1
+    next_level_xp = current_level * 100
+
+    return {
+        "level": current_level,
+        "xp": total_xp,
+        "next_level_xp": next_level_xp,
+        "streak": 0,  # Streak counter
+        "unlocked_badges": [a.code for a in unlocked_achievements],
+        "achievements": [
+            {
+                "id": a.id,
+                "code": a.code,
+                "title": a.title,
+                "description": a.description,
+                "earned_at": a.earned_at
+            }
+            for a in unlocked_achievements
+        ]
+    }

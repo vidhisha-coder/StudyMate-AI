@@ -13,7 +13,8 @@ import {
   Calendar,
   Zap,
   ArrowUpRight,
-  Sparkles
+  Sparkles,
+  Inbox
 } from 'lucide-react';
 import { getAnalytics } from '../services/dashboardService';
 import { getAchievements } from '../services/achievementsService';
@@ -34,80 +35,69 @@ const itemVariants = {
 };
 
 export default function Analytics() {
-  // States connected with backend logic + robust fallbacks
+  // New Comer Default: Set to ZERO by default
   const [stats, setStats] = useState({
-    avgScore: 84,
-    accuracy: 88,
-    quizzesAttempted: 24,
-    streak: 7
+    avgScore: 0,
+    accuracy: 0,
+    quizzesAttempted: 0,
+    streak: 0
   });
 
   const [analyticsData, setAnalyticsData] = useState(null);
 
-  const [subjectPerformance, setSubjectPerformance] = useState([
-    { subject: 'Operating Systems', score: 88, total: 100, color: 'bg-indigo-600' },
-    { subject: 'Database Systems', score: 76, total: 100, color: 'bg-blue-500' },
-    { subject: 'Python Data Structures', score: 92, total: 100, color: 'bg-emerald-500' },
-    { subject: 'Computer Networks', score: 68, total: 100, color: 'bg-amber-500' },
-  ]);
+  // Default empty or zero state for subjects
+  const [subjectPerformance, setSubjectPerformance] = useState([]);
 
-  const [achievements, setAchievements] = useState([
-    { id: 1, title: '7-Day Scholar', desc: 'Maintained a 7-day study streak', icon: Flame, color: 'bg-orange-50 border-orange-200 text-orange-600', unlocked: true },
-    { id: 2, title: 'Quiz Master', desc: 'Completed over 20 quizzes', icon: Trophy, color: 'bg-indigo-50 border-indigo-200 text-indigo-600', unlocked: true },
-    { id: 3, title: 'Accuracy King', desc: 'Scored above 90% in 5 consecutive tests', icon: Target, color: 'bg-emerald-50 border-emerald-200 text-emerald-600', unlocked: true },
-    { id: 4, title: 'Speed Demon', desc: 'Finished a quiz in under 3 minutes', icon: Zap, color: 'bg-slate-100 border-slate-200 text-slate-400', unlocked: false },
-  ]);
+  // Default empty state for achievements (Locked / Empty)
+  const [achievements, setAchievements] = useState([]);
 
-  const [quizHistory] = useState([
-    { id: 'QZ-108', title: 'OS - Ch 3 Process Management', score: '90%', correct: '9/10', date: '22 Jul 2026', time: '14 mins', status: 'Passed' },
-    { id: 'QZ-107', title: 'SQL Joins & Normalization', score: '75%', correct: '15/20', date: '21 Jul 2026', time: '18 mins', status: 'Passed' },
-    { id: 'QZ-106', title: 'Python Lists & Dictionaries', score: '100%', correct: '10/10', date: '20 Jul 2026', time: '08 mins', status: 'Perfect' },
-    { id: 'QZ-105', title: 'Computer Networks - OSI Model', score: '60%', correct: '6/10', date: '18 Jul 2026', time: '12 mins', status: 'Review Needed' },
-  ]);
+  // Default empty state for quiz history
+  const [quizHistory, setQuizHistory] = useState([]);
 
-  // Analytics safety render array check implementation
+  // Analytics safety render array check
   const chartData = analyticsData?.weekly_progress || [
-    { day: 'Mon', hours: 0 },
-    { day: 'Tue', hours: 0 },
-    { day: 'Wed', hours: 0 },
-    { day: 'Thu', hours: 0 },
-    { day: 'Fri', hours: 0 },
-    { day: 'Sat', hours: 0 },
-    { day: 'Sun', hours: 0 },
+    { day: 'Mon', score: 0 },
+    { day: 'Tue', score: 0 },
+    { day: 'Wed', score: 0 },
+    { day: 'Thu', score: 0 },
+    { day: 'Fri', score: 0 },
+    { day: 'Sat', score: 0 },
+    { day: 'Sun', score: 0 },
   ];
 
-  // Fetching aggregated analytics & achievements with safe handling for missing structures
   useEffect(() => {
     const fetchAnalyticsData = async () => {
       try {
         const data = await getAnalytics();
         if (data) {
           setAnalyticsData(data);
-          // Map response safely, falling back to existing defaults if properties are missing
+          
           setStats({
-            avgScore: data.avgScore ?? data.averageScore ?? stats.avgScore,
-            accuracy: data.accuracy ?? stats.accuracy,
-            quizzesAttempted: data.quizzesAttempted ?? data.totalQuizzes ?? stats.quizzesAttempted,
-            streak: data.streak ?? stats.streak
+            avgScore: data.avgScore ?? data.averageScore ?? 0,
+            accuracy: data.accuracy ?? 0,
+            quizzesAttempted: data.quizzesAttempted ?? data.totalQuizzes ?? 0,
+            streak: data.streak ?? 0
           });
 
-          // Handle missing breakdowns temporarily or safely clean/hide to avoid crashes
-          if (Array.isArray(data.subjectPerformance) && data.subjectPerformance.length > 0) {
+          if (Array.isArray(data.subjectPerformance)) {
             setSubjectPerformance(data.subjectPerformance);
+          }
+
+          if (Array.isArray(data.recent_quizzes)) {
+            setQuizHistory(data.recent_quizzes);
           }
         }
         
-        // Achievements data fetch
+        // Fetch Achievements
         const achievementsData = await getAchievements();
         if (achievementsData && Array.isArray(achievementsData)) {
-          // Re-map icons safely if backend provides objects without icon references
           const mappedAchievements = achievementsData.map((item, index) => ({
             id: item.id || index + 1,
-            title: item.title || 'Milestone Unlocked',
+            title: item.title || 'Milestone',
             desc: item.desc || item.description || '',
             icon: item.icon || Trophy,
             color: item.color || 'bg-indigo-50 border-indigo-200 text-indigo-600',
-            unlocked: item.unlocked ?? true
+            unlocked: item.unlocked ?? false
           }));
           setAchievements(mappedAchievements);
         }
@@ -139,11 +129,11 @@ export default function Analytics() {
 
         <div className="flex items-center gap-2 bg-indigo-50 border border-indigo-100/80 text-indigo-700 px-4 py-2 rounded-2xl text-xs font-bold w-fit">
           <Calendar className="w-4 h-4 text-indigo-600" />
-          <span>Last Updated: Today, 10:25 PM</span>
+          <span>Last Updated: Today, {new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
         </div>
       </div>
 
-      {/* 4 TOP METRIC CARDS */}
+      {/* 4 TOP METRIC CARDS - NOW DEFAULTS TO 0 */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         
         {/* Card 1: Average Score */}
@@ -151,8 +141,8 @@ export default function Analytics() {
           <div>
             <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Average Score</p>
             <h3 className="text-3xl font-black text-slate-900 mt-1">{stats.avgScore}%</h3>
-            <p className="text-[11px] text-emerald-600 font-bold flex items-center gap-1 mt-1">
-              <TrendingUp className="w-3.5 h-3.5" /> +4.2% from last week
+            <p className="text-[11px] text-slate-400 font-bold flex items-center gap-1 mt-1">
+              <TrendingUp className="w-3.5 h-3.5" /> Start quizzes to build average
             </p>
           </div>
           <div className="w-12 h-12 rounded-2xl bg-indigo-50 text-indigo-600 flex items-center justify-center border border-indigo-100">
@@ -165,8 +155,8 @@ export default function Analytics() {
           <div>
             <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Accuracy Rate</p>
             <h3 className="text-3xl font-black text-slate-900 mt-1">{stats.accuracy}%</h3>
-            <p className="text-[11px] text-emerald-600 font-bold flex items-center gap-1 mt-1">
-              <CheckCircle2 className="w-3.5 h-3.5" /> High precision
+            <p className="text-[11px] text-slate-400 font-bold flex items-center gap-1 mt-1">
+              <CheckCircle2 className="w-3.5 h-3.5" /> No attempts yet
             </p>
           </div>
           <div className="w-12 h-12 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center border border-emerald-100">
@@ -179,7 +169,7 @@ export default function Analytics() {
           <div>
             <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Quizzes Attempted</p>
             <h3 className="text-3xl font-black text-slate-900 mt-1">{stats.quizzesAttempted}</h3>
-            <p className="text-[11px] text-slate-500 font-bold mt-1">
+            <p className="text-[11px] text-slate-400 font-bold mt-1">
               Total completed decks
             </p>
           </div>
@@ -194,7 +184,7 @@ export default function Analytics() {
             <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Study Streak</p>
             <h3 className="text-3xl font-black text-slate-900 mt-1">{stats.streak} Days</h3>
             <p className="text-[11px] text-orange-600 font-bold flex items-center gap-1 mt-1">
-              <Sparkles className="w-3.5 h-3.5" /> Keep it up!
+              <Sparkles className="w-3.5 h-3.5" /> Complete a task today!
             </p>
           </div>
           <div className="w-12 h-12 rounded-2xl bg-orange-50 text-orange-600 flex items-center justify-center border border-orange-100">
@@ -207,7 +197,7 @@ export default function Analytics() {
       {/* CHARTS SECTION */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         
-        {/* Progress Line Chart (Custom SVG Line) */}
+        {/* Progress Line Chart */}
         <motion.div variants={itemVariants} className="lg:col-span-2 bg-white border border-slate-200/80 p-6 rounded-3xl shadow-sm flex flex-col justify-between">
           <div className="flex justify-between items-center mb-6">
             <div>
@@ -219,40 +209,39 @@ export default function Analytics() {
             </span>
           </div>
 
-          {/* Clean SVG Trend Chart */}
+          {/* Clean Flat Line SVG for 0 values */}
           <div className="w-full h-48 relative flex items-end pt-4 pb-2">
             <svg className="w-full h-full overflow-visible" viewBox="0 0 500 120">
               <defs>
                 <linearGradient id="gradientArea" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor="#4F46E5" stopOpacity="0.25"/>
+                  <stop offset="0%" stopColor="#4F46E5" stopOpacity="0.15"/>
                   <stop offset="100%" stopColor="#4F46E5" stopOpacity="0"/>
                 </linearGradient>
               </defs>
               <path 
-                d="M 0,90 Q 80,40 160,70 T 320,30 T 500,10 L 500,120 L 0,120 Z" 
+                d="M 0,110 L 125,110 L 250,110 L 375,110 L 500,110 L 500,120 L 0,120 Z" 
                 fill="url(#gradientArea)" 
               />
               <path 
-                d="M 0,90 Q 80,40 160,70 T 320,30 T 500,10" 
+                d="M 0,110 L 125,110 L 250,110 L 375,110 L 500,110" 
                 fill="none" 
-                stroke="#4F46E5" 
-                strokeWidth="4" 
+                stroke="#CBD5E1" 
+                strokeWidth="3" 
+                strokeDasharray="6 6"
                 strokeLinecap="round"
               />
-              {/* Dots */}
-              <circle cx="0" cy="90" r="5" fill="#4F46E5" />
-              <circle cx="160" cy="70" r="5" fill="#4F46E5" />
-              <circle cx="320" cy="30" r="5" fill="#4F46E5" />
-              <circle cx="500" cy="10" r="6" fill="#4F46E5" stroke="#FFFFFF" strokeWidth="2" />
             </svg>
+            <div className="absolute inset-0 flex items-center justify-center">
+              <p className="text-xs text-slate-400 font-semibold bg-white/80 px-3 py-1 rounded-full border border-slate-200/60">
+                No quiz activity recorded yet
+              </p>
+            </div>
           </div>
 
           <div className="flex justify-between items-center text-xs text-slate-400 font-bold border-t border-slate-100 pt-3 mt-2">
-            <span>{chartData[0]?.day || 'Mon'}</span>
-            <span>{chartData[1]?.day || 'Tue'}</span>
-            <span>{chartData[2]?.day || 'Wed'}</span>
-            <span>{chartData[3]?.day || 'Thu'}</span>
-            <span>{chartData[4]?.day || 'Fri'}</span>
+            {chartData.map((d, i) => (
+              <span key={i}>{d.day}</span>
+            ))}
           </div>
         </motion.div>
 
@@ -280,7 +269,10 @@ export default function Analytics() {
                 </div>
               ))
             ) : (
-              <p className="text-xs text-slate-400 py-4 text-center">Subject breakdowns currently unavailable.</p>
+              <div className="flex flex-col items-center justify-center py-8 text-slate-400 space-y-2">
+                <Inbox className="w-8 h-8 text-slate-300" />
+                <p className="text-xs font-medium text-center">No subjects tracked yet.<br/>Attempt a quiz to see mastery scores!</p>
+              </div>
             )}
           </div>
         </motion.div>
@@ -294,27 +286,33 @@ export default function Analytics() {
           <h2 className="text-lg font-black text-slate-900 tracking-tight">Achievements & Milestones</h2>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          {achievements.map((item) => {
-            const Icon = typeof item.icon === 'function' ? item.icon : Trophy;
-            return (
-              <div 
-                key={item.id} 
-                className={`p-5 rounded-3xl border transition-all flex items-start gap-4 ${
-                  item.unlocked ? "bg-white border-slate-200/80 shadow-sm" : "bg-slate-50/60 border-slate-200/50 opacity-60"
-                }`}
-              >
-                <div className={`p-3 rounded-2xl border ${item.color} flex-shrink-0`}>
-                  <Icon className="w-5 h-5" />
+        {achievements.length > 0 ? (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            {achievements.map((item) => {
+              const Icon = typeof item.icon === 'function' ? item.icon : Trophy;
+              return (
+                <div 
+                  key={item.id} 
+                  className={`p-5 rounded-3xl border transition-all flex items-start gap-4 ${
+                    item.unlocked ? "bg-white border-slate-200/80 shadow-sm" : "bg-slate-50/60 border-slate-200/50 opacity-60"
+                  }`}
+                >
+                  <div className={`p-3 rounded-2xl border ${item.color} flex-shrink-0`}>
+                    <Icon className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h3 className="font-bold text-sm text-slate-800 leading-snug">{item.title}</h3>
+                    <p className="text-xs text-slate-400 mt-1 font-medium leading-relaxed">{item.desc}</p>
+                  </div>
                 </div>
-                <div>
-                  <h3 className="font-bold text-sm text-slate-800 leading-snug">{item.title}</h3>
-                  <p className="text-xs text-slate-400 mt-1 font-medium leading-relaxed">{item.desc}</p>
-                </div>
-              </div>
-            );
-          })}
-        </div>
+              );
+            })}
+          </div>
+        ) : (
+          <div className="bg-white border border-slate-200/80 rounded-3xl p-6 text-center text-xs text-slate-400 font-medium">
+            Complete study milestones to unlock badges here!
+          </div>
+        )}
       </motion.div>
 
       {/* RECENT QUIZ HISTORY TABLE */}
@@ -330,40 +328,46 @@ export default function Analytics() {
         </div>
 
         <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse">
-            <thead>
-              <tr className="border-b border-slate-100 text-[11px] font-black text-slate-400 uppercase tracking-wider">
-                <th className="py-3 px-4">Quiz Title</th>
-                <th className="py-3 px-4">Score</th>
-                <th className="py-3 px-4">Accuracy</th>
-                <th className="py-3 px-4">Time Taken</th>
-                <th className="py-3 px-4">Date</th>
-                <th className="py-3 px-4 text-right">Status</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100 text-xs font-medium text-slate-700">
-              {quizHistory.map((row) => (
-                <tr key={row.id} className="hover:bg-slate-50/80 transition-colors">
-                  <td className="py-3.5 px-4 font-bold text-slate-900">{row.title}</td>
-                  <td className="py-3.5 px-4 font-black text-indigo-600">{row.score}</td>
-                  <td className="py-3.5 px-4">{row.correct}</td>
-                  <td className="py-3.5 px-4 text-slate-500 flex items-center gap-1">
-                    <Clock className="w-3.5 h-3.5 text-slate-400" /> {row.time}
-                  </td>
-                  <td className="py-3.5 px-4 text-slate-400">{row.date}</td>
-                  <td className="py-3.5 px-4 text-right">
-                    <span className={`inline-flex px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider ${
-                      row.status === 'Perfect' ? 'bg-emerald-100 text-emerald-700' :
-                      row.status === 'Passed' ? 'bg-indigo-100 text-indigo-700' :
-                      'bg-amber-100 text-amber-700'
-                    }`}>
-                      {row.status}
-                    </span>
-                  </td>
+          {quizHistory.length > 0 ? (
+            <table className="w-full text-left border-collapse">
+              <thead>
+                <tr className="border-b border-slate-100 text-[11px] font-black text-slate-400 uppercase tracking-wider">
+                  <th className="py-3 px-4">Quiz Title</th>
+                  <th className="py-3 px-4">Score</th>
+                  <th className="py-3 px-4">Accuracy</th>
+                  <th className="py-3 px-4">Time Taken</th>
+                  <th className="py-3 px-4">Date</th>
+                  <th className="py-3 px-4 text-right">Status</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody className="divide-y divide-slate-100 text-xs font-medium text-slate-700">
+                {quizHistory.map((row) => (
+                  <tr key={row.id} className="hover:bg-slate-50/80 transition-colors">
+                    <td className="py-3.5 px-4 font-bold text-slate-900">{row.title}</td>
+                    <td className="py-3.5 px-4 font-black text-indigo-600">{row.score}</td>
+                    <td className="py-3.5 px-4">{row.correct}</td>
+                    <td className="py-3.5 px-4 text-slate-500 flex items-center gap-1">
+                      <Clock className="w-3.5 h-3.5 text-slate-400" /> {row.time}
+                    </td>
+                    <td className="py-3.5 px-4 text-slate-400">{row.date}</td>
+                    <td className="py-3.5 px-4 text-right">
+                      <span className={`inline-flex px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider ${
+                        row.status === 'Perfect' ? 'bg-emerald-100 text-emerald-700' :
+                        row.status === 'Passed' ? 'bg-indigo-100 text-indigo-700' :
+                        'bg-amber-100 text-amber-700'
+                      }`}>
+                        {row.status}
+                      </span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          ) : (
+            <div className="py-8 text-center text-xs text-slate-400 font-medium">
+              No quiz attempts logged yet.
+            </div>
+          )}
         </div>
       </motion.div>
 

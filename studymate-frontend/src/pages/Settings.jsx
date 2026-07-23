@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useNavigate } from "react-router-dom";
+import { useTheme } from "../context/ThemeContext";
 import { 
   User, Mail, Lock, Sun, Moon, Bell, Calendar, HelpCircle, 
   BookOpen, Zap, Shield, LogOut, Trash2, Info, MessageSquare, 
@@ -11,21 +12,30 @@ import {
 export default function Settings({ onBack }) {
   const navigate = useNavigate();
 
-  // --- States ---
-  const [theme, setTheme] = useState("light"); // 'light' | 'dark'
-  const [accentColor, setAccentColor] = useState("indigo"); // 'indigo' | 'emerald' | 'amber' | 'rose'
-  const [fontSize, setFontSize] = useState("medium"); // 'small' | 'medium' | 'large'
+  // --- Global Theme Context ---
+  const { 
+    themeMode, 
+    setThemeMode, 
+    themeColor, 
+    setThemeColor, 
+    fontSize, 
+    setFontSize 
+  } = useTheme();
 
-  // Smart Back Navigation Handler
-  const handleBackNavigation = () => {
-    if (onBack) {
-      onBack();
-    } else {
-      navigate(-1);
-    }
+  const isDark = themeMode === "dark";
+
+  // --- Color Mapping Configuration ---
+  const themeAccentMap = {
+    indigo: { bg: "bg-indigo-600", hover: "hover:bg-indigo-700", text: "text-indigo-600", lightBg: "bg-indigo-50 dark:bg-indigo-950/40", border: "border-indigo-200" },
+    emerald: { bg: "bg-emerald-600", hover: "hover:bg-emerald-700", text: "text-emerald-600", lightBg: "bg-emerald-50 dark:bg-emerald-950/40", border: "border-emerald-200" },
+    blue: { bg: "bg-blue-600", hover: "hover:bg-blue-700", text: "text-blue-600", lightBg: "bg-blue-50 dark:bg-blue-950/40", border: "border-blue-200" },
+    amber: { bg: "bg-amber-500", hover: "hover:bg-amber-600", text: "text-amber-500", lightBg: "bg-amber-50 dark:bg-amber-950/40", border: "border-amber-200" },
+    rose: { bg: "bg-rose-600", hover: "hover:bg-rose-700", text: "text-rose-600", lightBg: "bg-rose-50 dark:bg-rose-950/40", border: "border-rose-200" },
   };
 
-  // Notifications
+  const activeAccent = themeAccentMap[themeColor] || themeAccentMap.indigo;
+
+  // --- Local Component States ---
   const [notifications, setNotifications] = useState({
     enabled: true,
     emailNotifications: true,
@@ -34,25 +44,30 @@ export default function Settings({ onBack }) {
     dailyGoalReminder: false,
   });
 
-  // AI Preferences
   const [aiConfig, setAiConfig] = useState({
     model: "gemini-1.5-pro",
     responseLength: "detailed",
     creativity: 0.7,
   });
 
-  // Modals & Dynamic Form Inputs
   const [activeModal, setActiveModal] = useState(null); // 'password' | 'delete' | null
   const [formInput, setFormInput] = useState("");
   const [toastMessage, setToastMessage] = useState(null);
 
-  // Helper Toast Trigger
+  // --- Handlers ---
+  const handleBackNavigation = () => {
+    if (onBack) {
+      onBack();
+    } else {
+      navigate(-1);
+    }
+  };
+
   const triggerToast = (msg) => {
     setToastMessage(msg);
     setTimeout(() => setToastMessage(null), 3000);
   };
 
-  // Logout Handler with Redirect
   const handleLogout = () => {
     triggerToast("Logged out successfully!");
     setTimeout(() => {
@@ -60,17 +75,6 @@ export default function Settings({ onBack }) {
     }, 1000);
   };
 
-  // Color Mapping Map
-  const themeAccentMap = {
-    indigo: { bg: "bg-indigo-600", hover: "hover:bg-indigo-700", text: "text-indigo-600", lightBg: "bg-indigo-50", border: "border-indigo-200" },
-    emerald: { bg: "bg-emerald-600", hover: "hover:bg-emerald-700", text: "text-emerald-600", lightBg: "bg-emerald-50", border: "border-emerald-200" },
-    amber: { bg: "bg-amber-500", hover: "hover:bg-amber-600", text: "text-amber-500", lightBg: "bg-amber-50", border: "border-amber-200" },
-    rose: { bg: "bg-rose-600", hover: "hover:bg-rose-700", text: "text-rose-600", lightBg: "bg-rose-50", border: "border-rose-200" },
-  };
-
-  const activeAccent = themeAccentMap[accentColor] || themeAccentMap.indigo;
-
-  // Account Handlers
   const handleAccountUpdate = (e) => {
     e.preventDefault();
     if (!formInput.trim()) return;
@@ -82,8 +86,6 @@ export default function Settings({ onBack }) {
     setFormInput("");
     setActiveModal(null);
   };
-
-  const isDark = theme === "dark";
 
   return (
     <div className={`w-full h-full grid grid-rows-[auto_1fr] overflow-hidden px-4 md:px-6 pt-5 pb-6 gap-5 box-border transition-colors duration-200 ${
@@ -221,7 +223,7 @@ export default function Settings({ onBack }) {
       {/* Main Settings Scroll Container */}
       <div className="w-full h-full overflow-y-auto custom-scrollbar min-h-0 space-y-6 pr-1">
         
-        {/* 1. ACCOUNT */}
+        {/* 1. ACCOUNT SECURITY */}
         <div className={`${isDark ? "bg-slate-900 border-slate-800" : "bg-white border-slate-200"} border rounded-[28px] p-6 shadow-xs space-y-4`}>
           <div className={`flex items-center justify-between border-b ${isDark ? "border-slate-800" : "border-slate-100"} pb-3`}>
             <div className="flex items-center gap-2">
@@ -237,7 +239,6 @@ export default function Settings({ onBack }) {
           </div>
 
           <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
-            {/* Change Password Only */}
             <div className={`flex-1 flex items-center justify-between p-3.5 ${isDark ? "bg-slate-800/50 border-slate-800" : "bg-slate-50/70 border-slate-200/80"} border rounded-2xl hover:bg-slate-100/50 dark:hover:bg-slate-800 transition-colors`}>
               <div className="space-y-0.5">
                 <p className="text-[11px] font-bold text-slate-400">Security Password</p>
@@ -251,7 +252,6 @@ export default function Settings({ onBack }) {
               </button>
             </div>
 
-            {/* Delete Account */}
             <button 
               onClick={() => setActiveModal("delete")}
               className="px-4 py-3.5 bg-rose-50 dark:bg-rose-950/40 hover:bg-rose-100 dark:hover:bg-rose-900/60 border border-rose-200/60 dark:border-rose-900/40 text-rose-600 dark:text-rose-400 font-bold text-xs rounded-2xl transition-all flex items-center justify-center gap-1.5 cursor-pointer active:scale-95"
@@ -261,7 +261,7 @@ export default function Settings({ onBack }) {
           </div>
         </div>
 
-        {/* 2. APPEARANCE */}
+        {/* 2. APPEARANCE (Context Connected) */}
         <div className={`${isDark ? "bg-slate-900 border-slate-800" : "bg-white border-slate-200"} border rounded-[28px] p-6 shadow-xs space-y-4`}>
           <div className={`flex items-center gap-2 border-b ${isDark ? "border-slate-800" : "border-slate-100"} pb-3`}>
             <Sun size={18} className="text-amber-500" />
@@ -274,9 +274,9 @@ export default function Settings({ onBack }) {
               <label className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Theme Mode</label>
               <div className={`grid grid-cols-2 gap-2 ${isDark ? "bg-slate-800 border-slate-700" : "bg-slate-50 border-slate-200"} p-1.5 border rounded-2xl`}>
                 <button 
-                  onClick={() => setTheme("light")}
+                  onClick={() => setThemeMode("light")}
                   className={`flex items-center justify-center gap-2 py-2 rounded-xl font-bold text-xs transition-all cursor-pointer ${
-                    theme === "light" 
+                    themeMode === "light" 
                       ? "bg-white text-slate-900 shadow-xs border border-slate-200" 
                       : "text-slate-400 hover:text-slate-200"
                   }`}
@@ -284,9 +284,9 @@ export default function Settings({ onBack }) {
                   <Sun size={14} className="text-amber-500" /> Light
                 </button>
                 <button 
-                  onClick={() => setTheme("dark")}
+                  onClick={() => setThemeMode("dark")}
                   className={`flex items-center justify-center gap-2 py-2 rounded-xl font-bold text-xs transition-all cursor-pointer ${
-                    theme === "dark" 
+                    themeMode === "dark" 
                       ? "bg-slate-950 text-white shadow-xs border border-slate-800" 
                       : "text-slate-400 hover:text-slate-600"
                   }`}
@@ -303,17 +303,18 @@ export default function Settings({ onBack }) {
                 {[
                   { id: "indigo", bg: "bg-indigo-600" },
                   { id: "emerald", bg: "bg-emerald-600" },
+                  { id: "blue", bg: "bg-blue-600" },
                   { id: "amber", bg: "bg-amber-500" },
                   { id: "rose", bg: "bg-rose-600" }
                 ].map((color) => (
                   <button 
                     key={color.id}
-                    onClick={() => setAccentColor(color.id)}
+                    onClick={() => setThemeColor(color.id)}
                     className={`w-7 h-7 rounded-xl ${color.bg} flex items-center justify-center transition-all cursor-pointer ${
-                      accentColor === color.id ? "ring-2 ring-offset-2 ring-slate-800 scale-105" : "opacity-70 hover:opacity-100"
+                      themeColor === color.id ? "ring-2 ring-offset-2 ring-slate-800 scale-105" : "opacity-70 hover:opacity-100"
                     }`}
                   >
-                    {accentColor === color.id && <Check size={13} className="text-white" />}
+                    {themeColor === color.id && <Check size={13} className="text-white" />}
                   </button>
                 ))}
               </div>
@@ -381,7 +382,6 @@ export default function Settings({ onBack }) {
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-            {/* AI Model */}
             <div className={`p-3.5 ${isDark ? "bg-slate-800/50 border-slate-800" : "bg-slate-50/70 border-slate-200/80"} border rounded-2xl space-y-2`}>
               <div className="flex items-center gap-2">
                 <Zap size={14} className={activeAccent.text} />
@@ -398,7 +398,6 @@ export default function Settings({ onBack }) {
               </select>
             </div>
 
-            {/* Response Length */}
             <div className={`p-3.5 ${isDark ? "bg-slate-800/50 border-slate-800" : "bg-slate-50/70 border-slate-200/80"} border rounded-2xl space-y-2`}>
               <div className="flex items-center gap-2">
                 <BookOpen size={14} className={activeAccent.text} />
@@ -415,7 +414,6 @@ export default function Settings({ onBack }) {
               </select>
             </div>
 
-            {/* Creativity Slider */}
             <div className={`p-3.5 ${isDark ? "bg-slate-800/50 border-slate-800" : "bg-slate-50/70 border-slate-200/80"} border rounded-2xl space-y-2`}>
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
@@ -437,7 +435,7 @@ export default function Settings({ onBack }) {
           </div>
         </div>
 
-        {/* 5. PRIVACY */}
+        {/* 5. PRIVACY & DATA CONTROLS */}
         <div className={`${isDark ? "bg-slate-900 border-slate-800" : "bg-white border-slate-200"} border rounded-[28px] p-6 shadow-xs space-y-4`}>
           <div className={`flex items-center gap-2 border-b ${isDark ? "border-slate-800" : "border-slate-100"} pb-3`}>
             <Shield size={18} className={activeAccent.text} />

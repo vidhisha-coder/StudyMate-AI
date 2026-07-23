@@ -13,10 +13,11 @@ import {
 } from "lucide-react";
 
 export default function AchievementsPage() {
+  // Initial state reset to 0 for new users
   const [stats, setStats] = useState({
-    xp: 420,
-    level: 5,
-    study_streak: 12,
+    xp: 0,
+    level: 1,
+    study_streak: 0,
   });
 
   const [earnedBadges, setEarnedBadges] = useState([]);
@@ -49,20 +50,26 @@ export default function AchievementsPage() {
       try {
         const token = localStorage.getItem("token");
 
-        const statsRes = await fetch("http://127.0.0.1:8000/achievements/stats", {
+        // Single endpoint call matching backend router
+        const res = await fetch("http://127.0.0.1:8000/achievements", {
           headers: { Authorization: `Bearer ${token}` }
         });
-        if (statsRes.ok) {
-          const statsData = await statsRes.json();
-          setStats(statsData);
-        }
 
-        const achievementsRes = await fetch("http://127.0.0.1:8000/achievements", {
-          headers: { Authorization: `Bearer ${token}` }
-        });
-        if (achievementsRes.ok) {
-          const achievementsData = await achievementsRes.json();
-          setEarnedBadges(achievementsData.map(a => a.code));
+        if (res.ok) {
+          const data = await res.json();
+          
+          setStats({
+            xp: data.xp || 0,
+            level: data.level || 1,
+            study_streak: data.streak || 0,
+          });
+
+          // Handle badges mapping from array or custom unlocked list
+          if (data.unlocked_badges) {
+            setEarnedBadges(data.unlocked_badges);
+          } else if (Array.isArray(data)) {
+            setEarnedBadges(data.map(a => a.code));
+          }
         }
       } catch (error) {
         console.error("Error fetching achievements:", error);

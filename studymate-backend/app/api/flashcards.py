@@ -1,6 +1,8 @@
 import json
+import re
 
 from fastapi import APIRouter, Depends, HTTPException
+from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from app.services.ai_service import ask_claude
@@ -11,6 +13,13 @@ from app.schemas import FlashcardGenerateRequest, FlashcardResponse
 from app.api.achievements import check_and_award_achievements
 
 router = APIRouter(prefix="/flashcards", tags=["Flashcards"])
+
+
+# Manual Flashcard Save Schema
+class FlashcardSaveRequest(BaseModel):
+    topic: str = "General"
+    question: str
+    answer: str
 
 
 @router.post("/generate", response_model=list[FlashcardResponse])
@@ -35,8 +44,11 @@ Study Material:
 
     response = ask_claude(prompt)
 
+    # Clean markdown formatting if present in LLM response
+    cleaned_response = re.sub(r"```json\s*|\s*```", "", response.strip())
+
     try:
-        cards = json.loads(response)
+        cards = json.loads(cleaned_response)
     except json.JSONDecodeError:
         raise HTTPException(status_code=500, detail="Could not generate flashcards, please try again")
 
@@ -58,6 +70,30 @@ Study Material:
     check_and_award_achievements(db, email)
 
     return saved_cards
+
+
+# =========================================================
+# NEW: Save Flashcard Endpoint (Fixes "Failed to save flashcard")
+# =========================================================
+@router.post("/save", response_model=FlashcardResponse)
+@router.post("/", response_model=FlashcardResponse)
+def save_flashcard(
+    card: FlashcardSaveRequest,
+    db: Session = Depends(get_db),
+    email: str = Depends(get_current_user)
+):
+    entry = Flashcard(
+        user_email=email,
+        topic=card.topic or "General",
+        question=card.question,
+        answer=card.answer,
+    )
+    db.add(entry)
+    db.commit()
+    db.refresh(entry)
+
+    check_and_award_achievements(db, email)
+    return entry
 
 
 @router.get("/", response_model=list[FlashcardResponse])

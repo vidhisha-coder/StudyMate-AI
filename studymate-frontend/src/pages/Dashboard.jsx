@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { Loader2 } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import DashboardHeader from '../components/dashboard/DashboardHeader.jsx';
 import StatsGrid from '../components/dashboard/StatsGrid.jsx';
 import AnalyticsChart from '../components/dashboard/AnalyticsChart.jsx';
@@ -14,6 +15,7 @@ const containerVariants = {
 };
 
 export default function Dashboard() {
+  const navigate = useNavigate();
   const [userName, setUserName] = useState("User");
   const [loading, setLoading] = useState(true);
 
@@ -22,6 +24,7 @@ export default function Dashboard() {
   const [activitiesData, setActivitiesData] = useState([]);
   const [notesData, setNotesData] = useState([]);
   const [coursesData, setCoursesData] = useState([]);
+  const [weeklyProgress, setWeeklyProgress] = useState([]);
 
   useEffect(() => {
     const fetchDashboardAnalytics = async () => {
@@ -29,12 +32,21 @@ export default function Dashboard() {
         const token = localStorage.getItem("token");
         const storedUser = localStorage.getItem("user");
 
-        if (storedUser) {
-          const parsedUser = JSON.parse(storedUser);
-          setUserName(parsedUser.name || parsedUser.username || "Rudra");
+        if (!token || token === "null" || token === "undefined") {
+          localStorage.clear();
+          navigate('/login');
+          return;
         }
 
-        // Backend API Request
+        if (storedUser) {
+          try {
+            const parsedUser = JSON.parse(storedUser);
+            setUserName(parsedUser.name || parsedUser.username || "Rudra");
+          } catch (e) {
+            console.error("Failed to parse user JSON:", e);
+          }
+        }
+
         const response = await fetch("http://127.0.0.1:8000/dashboard/analytics", {
           method: "GET",
           headers: {
@@ -43,56 +55,70 @@ export default function Dashboard() {
           }
         });
 
+        if (response.status === 401) {
+          localStorage.removeItem("token");
+          localStorage.removeItem("user");
+          navigate('/login');
+          return;
+        }
+
         if (response.ok) {
           const data = await response.json();
 
-          // 1. Map Backend Stats to UI Stats Grid
-          const completionPercentage = data.study_tasks?.total > 0
-            ? Math.round((data.study_tasks.completed / data.study_tasks.total) * 100)
-            : 0;
+          // Safe extractors to prevent undefined errors
+          const totalTasks = data.study_tasks?.total || 0;
+          const completedTasks = data.study_tasks?.completed || 0;
+          const completionPercentage = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
+
+          // Score Key Safe Check (checking common FastApi field names)
+          const rawScore = data.average_quiz_score_percent ?? data.average_score ?? data.avg_score ?? 0;
+          const quizzesCount = data.quizzes_taken ?? data.total_quizzes ?? 0;
 
           setStatsData([
             {
               label: "Recent Score",
-              value: `${data.average_quiz_score_percent}%`,
-              trend: `${data.quizzes_taken} Quizzes taken`,
+              value: `${rawScore}%`,
+              trend: `${quizzesCount} Quizzes taken`,
               trendType: "up",
               type: "score"
             },
             {
               label: "Task Progress",
               value: `${completionPercentage}%`,
-              trend: `${data.study_tasks.completed} of ${data.study_tasks.total} done`,
+              trend: `${completedTasks} of ${totalTasks} done`,
               trendType: "up",
               type: "progress"
             },
             {
               label: "Notes Created",
-              value: `${data.summaries_created}`,
-              trend: `${data.flashcards_created} Flashcards`,
+              value: `${data.summaries_created ?? 0}`,
+              trend: `${data.flashcards_created ?? 0} Flashcards`,
               trendType: "up",
               type: "accuracy"
             },
             {
               label: "Achievements",
-              value: `${data.achievements_earned}`,
+              value: `${data.achievements_earned ?? 0}`,
               trend: "Earned badges",
               trendType: "up",
               type: "streak"
             }
           ]);
 
-          // 2. Map Recent Activity Feed
-          if (data.recent_activity && data.recent_activity.length > 0) {
+          // Map Recent Activity Feed
+          if (data.recent_activity && Array.isArray(data.recent_activity)) {
             const mappedActivities = data.recent_activity.map(act => ({
-              title: act.title || "Study Note Created",
+              title: act.title || "Study Activity",
               time: act.created_at ? new Date(act.created_at).toLocaleDateString() : "Recently"
             }));
             setActivitiesData(mappedActivities);
           }
 
-        } else {
-          console.error("Failed to fetch analytics from backend");
+          // Map Analytics Graph
+          if (data.weekly_analytics && Array.isArray(data.weekly_analytics)) {
+            setWeeklyProgress(data.weekly_analytics);
+          }
+
         }
       } catch (error) {
         console.error("Error connecting dashboard to backend:", error);
@@ -102,7 +128,7 @@ export default function Dashboard() {
     };
 
     fetchDashboardAnalytics();
-  }, []);
+  }, [navigate]);
 
   if (loading) {
     return (
@@ -119,45 +145,43 @@ export default function Dashboard() {
       animate="show"
       className="w-full space-y-6 px-4 md:px-6 py-6 pb-12"
     >
-      {/* Header Section */}
       <DashboardHeader user={userName} />
 
-      {/* Stats Cards Grid (Dynamic DB Data) */}
       <StatsGrid stats={statsData} />
 
-      {/* Weekly Graph & Continue Learning Section */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-stretch w-full">
         <div className="lg:col-span-2 w-full">
-          <div className="bg-white/50 backdrop-blur-md border border-slate-200/60 p-5 rounded-[24px] md:rounded-[32px] shadow-sm h-full">
+          <div className="bg-white/50 dark:bg-slate-900/50 backdrop-blur-md border border-slate-200/60 dark:border-slate-800 p-5 rounded-[24px] md:rounded-[32px] shadow-sm h-full">
             <div className="flex justify-between items-center mb-4">
-              <h2 className="text-lg font-black text-slate-900">Weekly Progress Graph</h2>
-              <span className="text-xs font-bold text-indigo-600 bg-indigo-50 px-2.5 py-1 rounded-lg">This Week</span>
+              <h2 className="text-lg font-black text-slate-900 dark:text-slate-100">Weekly Progress Graph</h2>
+              <span className="text-xs font-bold text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/50 px-2.5 py-1 rounded-lg">This Week</span>
             </div>
-            <AnalyticsChart />
+            <AnalyticsChart chartData={weeklyProgress.length > 0 ? weeklyProgress : undefined} />
           </div>
         </div>
         
-        {/* Continue Learning with Scrollbar */}
-        <div className="bg-white/50 backdrop-blur-md border border-slate-200/60 p-6 rounded-[24px] md:rounded-[32px] shadow-sm flex flex-col justify-between w-full">
+        <div className="bg-white/50 dark:bg-slate-900/50 backdrop-blur-md border border-slate-200/60 dark:border-slate-800 p-6 rounded-[24px] md:rounded-[32px] shadow-sm flex flex-col justify-between w-full">
           <div>
             <div className="flex justify-between items-center mb-4">
-              <h2 className="text-[22px] font-black tracking-tight text-slate-900">Continue Learning</h2>
-              <span className="text-xs font-semibold text-slate-500 bg-slate-100 px-2.5 py-1 rounded-full">
+              <h2 className="text-[22px] font-black tracking-tight text-slate-900 dark:text-slate-100">Continue Learning</h2>
+              <span className="text-xs font-semibold text-slate-500 bg-slate-100 dark:bg-slate-800 dark:text-slate-400 px-2.5 py-1 rounded-full">
                 {coursesData.length} Courses
               </span>
             </div>
 
-            {/* Scrollable Container */}
             <div className="space-y-3.5 max-h-[320px] overflow-y-auto pr-2 [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-slate-200 hover:[&::-webkit-scrollbar-thumb]:bg-indigo-300 [&::-webkit-scrollbar-thumb]:rounded-full">
-              {coursesData.map(course => (
-                <CourseCard key={course.id} course={course} />
-              ))}
+              {coursesData.length > 0 ? (
+                coursesData.map(course => (
+                  <CourseCard key={course.id} course={course} />
+                ))
+              ) : (
+                <p className="text-sm text-slate-400 py-4 text-center">No active courses yet.</p>
+              )}
             </div>
           </div>
         </div>
       </div>
 
-      {/* Recent Workspace Assets & Activity Log Block */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 w-full">
         <div className="lg:col-span-2 w-full">
           <RecentFiles files={notesData} />

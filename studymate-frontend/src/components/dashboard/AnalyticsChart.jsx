@@ -2,17 +2,20 @@ import React from 'react';
 import { motion } from 'framer-motion';
 import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, Tooltip, CartesianGrid } from 'recharts';
 
-const chartData = [
-  { name: 'Mon', hours: 2.4 },
-  { name: 'Tue', hours: 4.8 },
-  { name: 'Wed', hours: 3.2 },
-  { name: 'Thu', hours: 5.5 },
-  { name: 'Fri', hours: 1.8 },
-  { name: 'Sat', hours: 4.0 },
-  { name: 'Sun', hours: 2.8 },
+// Zero-state fallback chart data (jab backend se koi dynamic study hours data na aaye)
+const defaultChartData = [
+  { name: 'Mon', hours: 0 },
+  { name: 'Tue', hours: 0 },
+  { name: 'Wed', hours: 0 },
+  { name: 'Thu', hours: 0 },
+  { name: 'Fri', hours: 0 },
+  { name: 'Sat', hours: 0 },
+  { name: 'Sun', hours: 0 },
 ];
 
-export default function AnalyticsChart() {
+export default function AnalyticsChart({ data = defaultChartData, periodLabel = "Weekly Overview" }) {
+  const activeData = data && data.length > 0 ? data : defaultChartData;
+
   return (
     <motion.div 
       variants={{ hidden: { opacity: 0, y: 20 }, show: { opacity: 1, y: 0 } }}
@@ -21,7 +24,10 @@ export default function AnalyticsChart() {
       <div className="flex items-center justify-between mb-6">
         <div>
           <h2 className="text-[26px] font-bold tracking-tight text-slate-900 dark:text-slate-100">Study Analytics</h2>
-          <p className="text-[12px] font-semibold tracking-wider text-slate-400 uppercase mt-0.5">Metrics over last 7 Days</p>
+          {/* Dynamic Period Subheading (Hardcoded 7 Days removed) */}
+          <p className="text-[12px] font-semibold tracking-wider text-slate-400 uppercase mt-0.5">
+            {periodLabel}
+          </p>
         </div>
         <div className="flex items-center gap-2 bg-slate-50 dark:bg-slate-800 border border-slate-100 dark:border-slate-700 px-3 py-1.5 rounded-full text-xs font-bold text-slate-600 dark:text-slate-300">
           <span className="w-2 h-2 rounded-full bg-indigo-600"></span> Hours Expended
@@ -30,8 +36,7 @@ export default function AnalyticsChart() {
 
       <div className="flex-1 w-full text-[12px] font-medium text-slate-400 min-h-[260px]">
         <ResponsiveContainer width="100%" height="100%">
-          {/* Margin Top aur Bottom me breath space di hai taaki 0 line clear dikhe */}
-          <AreaChart data={chartData} margin={{ top: 15, right: 15, left: -15, bottom: 25 }}>
+          <AreaChart data={activeData} margin={{ top: 15, right: 15, left: -15, bottom: 25 }}>
             <defs>
               <linearGradient id="premiumGlow" x1="0" y1="0" x2="0" y2="1">
                 <stop offset="5%" stopColor="#4F46E5" stopOpacity={0.25}/>

@@ -58,7 +58,8 @@ def get_analytics(db: Session = Depends(get_db), email: str = Depends(get_curren
         "avgScore": avg_score_percent,
         "accuracy": accuracy_rate,
         "quizzesAttempted": quiz_count,
-        "streak": 7,
+        # TEMPORARY FIX: Set streak to 0 (or your task completion logic)
+        "streak": completed_tasks if completed_tasks > 0 else 0,
         "summaries_created": notes_count,
         "flashcards_created": flashcards_count,
         "chat_messages_sent": chats_count,

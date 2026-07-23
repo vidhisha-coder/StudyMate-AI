@@ -1,11 +1,12 @@
 import React from 'react';
 import { motion } from 'framer-motion';
-import { FileCode, Clock, ShieldCheck, Flame } from 'lucide-react';
+import { Target, CheckSquare, FileText, Flame } from 'lucide-react';
 
+// Updated keys to match Dashboard stat types:
 const iconsMap = {
-  files: <FileCode size={16} className="text-indigo-600" />,
-  hours: <Clock size={16} className="text-indigo-600" />,
-  credits: <ShieldCheck size={16} className="text-indigo-600" />,
+  score: <Target size={16} className="text-indigo-600" />,
+  progress: <CheckSquare size={16} className="text-indigo-600" />,
+  accuracy: <FileText size={16} className="text-indigo-600" />,
   streak: <Flame size={16} className="text-indigo-600" />
 };
 

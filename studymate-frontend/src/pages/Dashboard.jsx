@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
-import { Loader2 } from 'lucide-react';
+import { Loader2, Target, CheckSquare, FileText, Flame } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import DashboardHeader from '../components/dashboard/DashboardHeader.jsx';
 import StatsGrid from '../components/dashboard/StatsGrid.jsx';
@@ -74,34 +74,39 @@ export default function Dashboard() {
           const rawScore = data.average_quiz_score_percent ?? data.average_score ?? data.avg_score ?? 0;
           const quizzesCount = data.quizzes_taken ?? data.total_quizzes ?? 0;
 
+          // Added explicit icon components so StatsGrid can render them properly
           setStatsData([
             {
               label: "Recent Score",
               value: `${rawScore}%`,
               trend: `${quizzesCount} Quizzes taken`,
               trendType: "up",
-              type: "score"
+              type: "score",
+              icon: Target
             },
             {
               label: "Task Progress",
               value: `${completionPercentage}%`,
               trend: `${completedTasks} of ${totalTasks} done`,
               trendType: "up",
-              type: "progress"
+              type: "progress",
+              icon: CheckSquare
             },
             {
               label: "Notes Created",
               value: `${data.summaries_created ?? 0}`,
               trend: `${data.flashcards_created ?? 0} Flashcards`,
               trendType: "up",
-              type: "accuracy"
+              type: "accuracy",
+              icon: FileText
             },
             {
               label: "Achievements",
               value: `${data.achievements_earned ?? 0}`,
               trend: "Earned badges",
               trendType: "up",
-              type: "streak"
+              type: "streak",
+              icon: Flame
             }
           ]);
 

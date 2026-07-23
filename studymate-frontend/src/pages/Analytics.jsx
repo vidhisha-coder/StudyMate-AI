@@ -11,22 +11,17 @@ import {
   TrendingUp, 
   BookOpen, 
   Calendar,
-  Zap,
   ArrowUpRight,
   Sparkles,
   Inbox
 } from 'lucide-react';
-import { getAnalytics } from '../services/dashboardService';
-import { getAchievements } from '../services/achievementsService';
 
-// Animation Container Variants
+// New Dedicated Analytics Service
+import { getAnalyticsData, getAchievementsData } from '../services/analyticsService';
+
 const containerVariants = {
   hidden: { opacity: 0, y: 15 },
-  show: { 
-    opacity: 1, 
-    y: 0, 
-    transition: { duration: 0.4, staggerChildren: 0.1 } 
-  }
+  show: { opacity: 1, y: 0, transition: { duration: 0.4, staggerChildren: 0.1 } }
 };
 
 const itemVariants = {
@@ -35,7 +30,6 @@ const itemVariants = {
 };
 
 export default function Analytics() {
-  // New Comer Default: Set to ZERO by default
   const [stats, setStats] = useState({
     avgScore: 0,
     accuracy: 0,
@@ -43,54 +37,29 @@ export default function Analytics() {
     streak: 0
   });
 
-  const [analyticsData, setAnalyticsData] = useState(null);
-
-  // Default empty or zero state for subjects
   const [subjectPerformance, setSubjectPerformance] = useState([]);
-
-  // Default empty state for achievements (Locked / Empty)
   const [achievements, setAchievements] = useState([]);
-
-  // Default empty state for quiz history
   const [quizHistory, setQuizHistory] = useState([]);
 
-  // Analytics safety render array check
-  const chartData = analyticsData?.weekly_progress || [
-    { day: 'Mon', score: 0 },
-    { day: 'Tue', score: 0 },
-    { day: 'Wed', score: 0 },
-    { day: 'Thu', score: 0 },
-    { day: 'Fri', score: 0 },
-    { day: 'Sat', score: 0 },
-    { day: 'Sun', score: 0 },
-  ];
-
   useEffect(() => {
-    const fetchAnalyticsData = async () => {
+    const fetchAnalytics = async () => {
       try {
-        const data = await getAnalytics();
-        if (data) {
-          setAnalyticsData(data);
-          
-          setStats({
-            avgScore: data.avgScore ?? data.averageScore ?? 0,
-            accuracy: data.accuracy ?? 0,
-            quizzesAttempted: data.quizzesAttempted ?? data.totalQuizzes ?? 0,
-            streak: data.streak ?? 0
-          });
-
-          if (Array.isArray(data.subjectPerformance)) {
-            setSubjectPerformance(data.subjectPerformance);
-          }
-
-          if (Array.isArray(data.recent_quizzes)) {
-            setQuizHistory(data.recent_quizzes);
-          }
-        }
+        const data = await getAnalyticsData();
         
-        // Fetch Achievements
-        const achievementsData = await getAchievements();
-        if (achievementsData && Array.isArray(achievementsData)) {
+        // Exact Zero-State Assignment
+        setStats({
+          avgScore: data.avgScore,
+          accuracy: data.accuracy,
+          quizzesAttempted: data.quizzesAttempted,
+          streak: data.streak // Pure 0 state binding
+        });
+
+        setSubjectPerformance(Array.isArray(data.subjectPerformance) ? data.subjectPerformance : []);
+        setQuizHistory(Array.isArray(data.recentQuizzes) ? data.recentQuizzes : []);
+
+        // Achievements Fetch
+        const achievementsData = await getAchievementsData();
+        if (Array.isArray(achievementsData)) {
           const mappedAchievements = achievementsData.map((item, index) => ({
             id: item.id || index + 1,
             title: item.title || 'Milestone',
@@ -102,10 +71,11 @@ export default function Analytics() {
           setAchievements(mappedAchievements);
         }
       } catch (err) {
-        console.error("Error fetching analytics:", err);
+        console.error("Error loading analytics:", err);
       }
     };
-    fetchAnalyticsData();
+
+    fetchAnalytics();
   }, []);
 
   return (
@@ -133,7 +103,7 @@ export default function Analytics() {
         </div>
       </div>
 
-      {/* 4 TOP METRIC CARDS - NOW DEFAULTS TO 0 */}
+      {/* 4 TOP METRIC CARDS */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         
         {/* Card 1: Average Score */}
@@ -197,7 +167,7 @@ export default function Analytics() {
       {/* CHARTS SECTION */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         
-        {/* Progress Line Chart */}
+        {/* Progress Chart Placeholder */}
         <motion.div variants={itemVariants} className="lg:col-span-2 bg-white border border-slate-200/80 p-6 rounded-3xl shadow-sm flex flex-col justify-between">
           <div className="flex justify-between items-center mb-6">
             <div>
@@ -209,7 +179,6 @@ export default function Analytics() {
             </span>
           </div>
 
-          {/* Clean Flat Line SVG for 0 values */}
           <div className="w-full h-48 relative flex items-end pt-4 pb-2">
             <svg className="w-full h-full overflow-visible" viewBox="0 0 500 120">
               <defs>
@@ -218,18 +187,8 @@ export default function Analytics() {
                   <stop offset="100%" stopColor="#4F46E5" stopOpacity="0"/>
                 </linearGradient>
               </defs>
-              <path 
-                d="M 0,110 L 125,110 L 250,110 L 375,110 L 500,110 L 500,120 L 0,120 Z" 
-                fill="url(#gradientArea)" 
-              />
-              <path 
-                d="M 0,110 L 125,110 L 250,110 L 375,110 L 500,110" 
-                fill="none" 
-                stroke="#CBD5E1" 
-                strokeWidth="3" 
-                strokeDasharray="6 6"
-                strokeLinecap="round"
-              />
+              <path d="M 0,110 L 125,110 L 250,110 L 375,110 L 500,110 L 500,120 L 0,120 Z" fill="url(#gradientArea)" />
+              <path d="M 0,110 L 125,110 L 250,110 L 375,110 L 500,110" fill="none" stroke="#CBD5E1" strokeWidth="3" strokeDasharray="6 6" strokeLinecap="round" />
             </svg>
             <div className="absolute inset-0 flex items-center justify-center">
               <p className="text-xs text-slate-400 font-semibold bg-white/80 px-3 py-1 rounded-full border border-slate-200/60">
@@ -239,8 +198,8 @@ export default function Analytics() {
           </div>
 
           <div className="flex justify-between items-center text-xs text-slate-400 font-bold border-t border-slate-100 pt-3 mt-2">
-            {chartData.map((d, i) => (
-              <span key={i}>{d.day}</span>
+            {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map((day, i) => (
+              <span key={i}>{day}</span>
             ))}
           </div>
         </motion.div>

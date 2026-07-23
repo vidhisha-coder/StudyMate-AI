@@ -103,7 +103,6 @@ export default function StudyPlanner() {
 
   const generateAiPlan = async () => {
     try {
-      // Create sample AI-driven task via backend
       const aiPayload = {
         title: 'AI: System Design Revision',
         subject: 'Architecture',
@@ -378,24 +377,35 @@ export default function StudyPlanner() {
                   </div>
                   <div>
                     <label className="text-xs font-bold text-slate-600">Date</label>
-                    <input type="date" value={newTask.date} onChange={e => setNewTask({...newTask, date: e.target.value})} className="w-full mt-1 p-3 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+                    <input type="date" value={newTask.date} onChange={e => setNewTask({...newTask, date: e.target.value})} className="w-full mt-1 p-3 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer" />
                   </div>
                 </div>
 
+                {/* ⏱️ UPDATED: Time Pickers with Native Clock Support */}
                 <div className="grid grid-cols-2 gap-2">
                   <div>
                     <label className="text-xs font-bold text-slate-600">Start Time</label>
-                    <input type="text" placeholder="18:00" value={newTask.start_time} onChange={e => setNewTask({...newTask, start_time: e.target.value})} className="w-full mt-1 p-3 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+                    <input 
+                      type="time" 
+                      value={newTask.start_time} 
+                      onChange={e => setNewTask({...newTask, start_time: e.target.value})} 
+                      className="w-full mt-1 p-3 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer" 
+                    />
                   </div>
                   <div>
                     <label className="text-xs font-bold text-slate-600">End Time</label>
-                    <input type="text" placeholder="19:30" value={newTask.end_time} onChange={e => setNewTask({...newTask, end_time: e.target.value})} className="w-full mt-1 p-3 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+                    <input 
+                      type="time" 
+                      value={newTask.end_time} 
+                      onChange={e => setNewTask({...newTask, end_time: e.target.value})} 
+                      className="w-full mt-1 p-3 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer" 
+                    />
                   </div>
                 </div>
 
                 <div>
                   <label className="text-xs font-bold text-slate-600">Priority</label>
-                  <select value={newTask.priority} onChange={e => setNewTask({...newTask, priority: e.target.value})} className="w-full mt-1 p-3 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                  <select value={newTask.priority} onChange={e => setNewTask({...newTask, priority: e.target.value})} className="w-full mt-1 p-3 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer">
                     <option value="High">High</option>
                     <option value="Medium">Medium</option>
                     <option value="Low">Low</option>

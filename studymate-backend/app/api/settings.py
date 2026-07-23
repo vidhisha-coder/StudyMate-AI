@@ -4,8 +4,7 @@ from sqlalchemy.orm import Session
 from app.database import get_db
 from app.auth import get_current_user
 from app.models import User
-from app.schemas import SettingsUpdate
-
+from app.schemas import SettingsUpdateRequest
 router = APIRouter(
     prefix="/settings",
     tags=["Settings"]
@@ -30,7 +29,7 @@ def get_settings(
 
 @router.put("/")
 def update_settings(
-    data: SettingsUpdate,
+    data: SettingsUpdateRequest,
     db: Session = Depends(get_db),
     email: str = Depends(get_current_user),
 ):

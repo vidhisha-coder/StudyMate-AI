@@ -194,21 +194,6 @@ ACCESS_TOKEN_EXPIRE_MINUTES=60
 
 ---
 
-# 📸 Application Screenshots
-
-> Add screenshots after deployment.
-
-- Login
-- Dashboard
-- AI Chatbot
-- AI Notes
-- AI Quiz
-- AI Planner
-- Flashcards
-- Achievements
-- Profile
-
----
 
 # 🔒 Authentication
 

@@ -2,7 +2,7 @@ fastapi
 uvicorn
 sqlalchemy
 python-dotenv
-anthropic
+groq
 python-multipart
 email-validator
 passlib[bcrypt]

@@ -1,13 +1,13 @@
 import json
-from fastapi import APIRouter, Depends, HTTPException
+
+from fastapi import APIRouter, Depends
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
+from app.services.ai_service import ask_claude
 from app.database import get_db
 from app.auth import get_current_user
 from app.models import QuizResult
-from app.services.ai_service import ask_claude
-from app.utils import add_xp
 from app.api.achievements import check_and_award_achievements
 
 router = APIRouter(prefix="/quiz", tags=["Quiz"])
@@ -18,7 +18,7 @@ class QuizRequest(BaseModel):
 
 
 class QuizSubmitRequest(BaseModel):
-    topic: str
+    topic: str = "General"
     score: int
     total_questions: int
 
@@ -44,18 +44,18 @@ Study Material:
 
 {data.text}
 """
+
     response = ask_claude(prompt)
     return json.loads(response)
 
 
-# 🚀 NEW: Quiz complete submit endpoint (20 XP + Achievements)
 @router.post("/submit")
-def submit_quiz(
+def submit_quiz_result(
     data: QuizSubmitRequest,
     db: Session = Depends(get_db),
     email: str = Depends(get_current_user),
 ):
-    # 1. Result save karo
+    """Quiz complete hone ke baad frontend ye call karega score save karne ke liye"""
     result = QuizResult(
         user_email=email,
         topic=data.topic,
@@ -65,10 +65,16 @@ def submit_quiz(
     db.add(result)
     db.commit()
 
-    # 2. Add 20 XP
-    add_xp(db, email, 20)
-
-    # 3. Check & award badges
     check_and_award_achievements(db, email)
 
-    return {"message": "Quiz result saved successfully!", "xp_gained": 20}
+    return {"message": "Quiz result saved"}
+
+
+@router.get("/history")
+def get_quiz_history(db: Session = Depends(get_db), email: str = Depends(get_current_user)):
+    return (
+        db.query(QuizResult)
+        .filter(QuizResult.user_email == email)
+        .order_by(QuizResult.created_at.desc())
+        .all()
+    )

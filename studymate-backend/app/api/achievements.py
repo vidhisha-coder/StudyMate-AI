@@ -3,20 +3,12 @@ from sqlalchemy.orm import Session
 
 from app.database import get_db
 from app.auth import get_current_user
-from app.models import (
-    Achievement,
-    NoteHistory,
-    Flashcard,
-    QuizResult,
-    StudyTask,
-    UserStats,
-)
+from app.models import Achievement, NoteHistory, Flashcard, QuizResult, StudyTask
 from app.schemas import AchievementResponse
 
 router = APIRouter(prefix="/achievements", tags=["Achievements"])
 
 
-# Badge definitions: (code, title, description, condition_function)
 def _badge_rules(db: Session, user_email: str):
     notes_count = db.query(NoteHistory).filter(NoteHistory.user_email == user_email).count()
     flashcards_count = db.query(Flashcard).filter(Flashcard.user_email == user_email).count()
@@ -38,21 +30,15 @@ def _badge_rules(db: Session, user_email: str):
 
 
 def check_and_award_achievements(db: Session, user_email: str):
+    """Har activity ke baad call hota hai — automatically naye badges unlock karta hai"""
     already_earned = {
         a.code for a in db.query(Achievement).filter(Achievement.user_email == user_email).all()
     }
 
     newly_earned = []
-
     for code, title, description, condition_met in _badge_rules(db, user_email):
         if condition_met and code not in already_earned:
-            achievement = Achievement(
-                user_email=user_email,
-                code=code,
-                title=title,
-                description=description,
-            )
-            db.add(achievement)
+            db.add(Achievement(user_email=user_email, code=code, title=title, description=description))
             newly_earned.append(code)
 
     if newly_earned:
@@ -61,34 +47,8 @@ def check_and_award_achievements(db: Session, user_email: str):
     return newly_earned
 
 
-# 🚀 NEW: GET Stats API Endpoint
-@router.get("/stats")
-def get_user_stats(
-    db: Session = Depends(get_db),
-    email: str = Depends(get_current_user),
-):
-    stats = db.query(UserStats).filter(UserStats.user_email == email).first()
-
-    if not stats:
-        return {
-            "user_email": email,
-            "xp": 0,
-            "level": 1,
-            "study_streak": 0,
-            "total_notes": 0,
-            "total_flashcards": 0,
-            "total_quizzes": 0
-        }
-
-    return stats
-
-
-# 📜 GET Badges List
-@router.get("", response_model=list[AchievementResponse])
-def get_achievements(
-    db: Session = Depends(get_db),
-    email: str = Depends(get_current_user),
-):
+@router.get("/", response_model=list[AchievementResponse])
+def get_achievements(db: Session = Depends(get_db), email: str = Depends(get_current_user)):
     return (
         db.query(Achievement)
         .filter(Achievement.user_email == email)

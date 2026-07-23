@@ -29,6 +29,7 @@ class UserResponse(BaseModel):
         from_attributes = True
 
 
+# ---------- Notes History ----------
 class NoteHistoryResponse(BaseModel):
     id: int
     title: str
@@ -40,8 +41,9 @@ class NoteHistoryResponse(BaseModel):
         from_attributes = True
 
 
+# ---------- Flashcards ----------
 class FlashcardGenerateRequest(BaseModel):
-    notes: str
+    text: str
     topic: Optional[str] = "General"
     count: Optional[int] = 8
 
@@ -57,47 +59,25 @@ class FlashcardResponse(BaseModel):
         from_attributes = True
 
 
-class QuizSubmitRequest(BaseModel):
-    topic: Optional[str] = "General"
-    score: int
-    total_questions: int
+# ---------- Study Planner ----------
+class TaskCreate(BaseModel):
+    title: str
+    subject: Optional[str] = "General"
+    date: str
+    start_time: str
+    end_time: str
+    priority: str = "Medium"
 
 
-class QuizResultResponse(BaseModel):
+class TaskResponse(TaskCreate):
     id: int
-    topic: str
-    score: int
-    total_questions: int
-    created_at: datetime
+    completed: bool = False
 
     class Config:
         from_attributes = True
 
 
-class StudyTaskCreate(BaseModel):
-    subject: str
-    task: str
-    due_date: str
-
-
-class StudyTaskUpdate(BaseModel):
-    subject: Optional[str] = None
-    task: Optional[str] = None
-    due_date: Optional[str] = None
-    completed: Optional[bool] = None
-
-
-class StudyTaskResponse(BaseModel):
-    id: int
-    subject: str
-    task: str
-    due_date: str
-    completed: bool
-
-    class Config:
-        from_attributes = True
-
-
+# ---------- Achievements ----------
 class AchievementResponse(BaseModel):
     id: int
     code: str
@@ -107,3 +87,13 @@ class AchievementResponse(BaseModel):
 
     class Config:
         from_attributes = True
+
+
+# ---------- Profile ----------
+class ProfileUpdateRequest(BaseModel):
+    name: Optional[str] = None
+
+
+class ChangePasswordRequest(BaseModel):
+    current_password: str
+    new_password: str

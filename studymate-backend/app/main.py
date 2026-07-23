@@ -14,6 +14,9 @@ from app.api.quiz import router as quiz_router
 from app.api.planner import router as planner_router
 from app.api.notes import router as notes_router          # 👈 Notes Router
 from app.api.achievements import router as achievements_router  # 👈 Achievements & Stats Router
+from app.api.flashcards import router as flashcards_router
+from app.api.dashboard import router as dashboard_router
+from app.api.profile import router as profile_router
 
 # Create database tables
 Base.metadata.create_all(bind=engine)
@@ -57,3 +60,6 @@ app.include_router(quiz_router)
 app.include_router(planner_router)
 app.include_router(notes_router)         # 👈 Added
 app.include_router(achievements_router)  # 👈 Added
+app.include_router(flashcards_router)
+app.include_router(dashboard_router)
+app.include_router(profile_router)

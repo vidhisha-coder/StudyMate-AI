@@ -3,7 +3,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { Eye, EyeOff, Mail, Lock, Sparkles, Loader2 } from "lucide-react";
 import { login as loginApiService } from "../services/authService";
-import { useAuth } from "../context/AuthContext"; // 👈 1. Import useAuth
+import { useAuth } from "../context/AuthContext";
 
 function Login() {
   const [showPassword, setShowPassword] = useState(false);
@@ -12,25 +12,19 @@ function Login() {
   const [loading, setLoading] = useState(false);
 
   const navigate = useNavigate();
-  const { login } = useAuth(); // 👈 2. Extract login function from AuthContext
+  const { login } = useAuth();
 
   const handleLogin = async (e) => {
     e.preventDefault();
     setLoading(true);
 
     try {
-      // API call to login
       const response = await loginApiService(email, password);
-
-      // Extract user info from response (Fallback to email handle name if name missing)
       const userDisplayName = response.name || response.user?.name || email.split("@")[0];
 
-      // Save User Info for Dashboard Header
       localStorage.setItem("user", JSON.stringify({ name: userDisplayName, email }));
 
-      // 👈 3. Call AuthContext login (This updates state & sets token)
       login(response.access_token);
-
       navigate("/dashboard");
 
     } catch (error) {
@@ -58,11 +52,14 @@ function Login() {
         className="bg-white rounded-[32px] shadow-2xl border border-slate-100 p-8 md:p-10 w-full max-w-md relative z-10"
       >
 
-        {/* Header Badge */}
+        {/* Header Badge (Now clickable & redirects to Landing Page) */}
         <div className="flex justify-center mb-2">
-          <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-indigo-50 border border-indigo-100 text-indigo-600 font-bold text-xs rounded-full">
+          <Link 
+            to="/" 
+            className="inline-flex items-center gap-1.5 px-3 py-1 bg-indigo-50 hover:bg-indigo-100 border border-indigo-100 text-indigo-600 font-bold text-xs rounded-full transition-all hover:scale-105 active:scale-95 cursor-pointer"
+          >
             <Sparkles size={13} /> StudyMate AI
-          </span>
+          </Link>
         </div>
 
         <h1 className="text-2xl md:text-3xl font-black text-center text-slate-900 tracking-tight">

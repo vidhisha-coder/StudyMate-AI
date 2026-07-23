@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { 
   Trophy, 
@@ -15,6 +15,8 @@ import {
   ArrowUpRight,
   Sparkles
 } from 'lucide-react';
+import { getAnalytics } from '../services/dashboardService';
+import { getAchievements } from '../services/achievementsService';
 
 // Animation Container Variants
 const containerVariants = {
@@ -32,22 +34,24 @@ const itemVariants = {
 };
 
 export default function Analytics() {
-  // Mock Data States (Can be replaced with Backend API calls later)
-  const [stats] = useState({
+  // States connected with backend logic + robust fallbacks
+  const [stats, setStats] = useState({
     avgScore: 84,
     accuracy: 88,
     quizzesAttempted: 24,
     streak: 7
   });
 
-  const [subjectPerformance] = useState([
+  const [analyticsData, setAnalyticsData] = useState(null);
+
+  const [subjectPerformance, setSubjectPerformance] = useState([
     { subject: 'Operating Systems', score: 88, total: 100, color: 'bg-indigo-600' },
     { subject: 'Database Systems', score: 76, total: 100, color: 'bg-blue-500' },
     { subject: 'Python Data Structures', score: 92, total: 100, color: 'bg-emerald-500' },
     { subject: 'Computer Networks', score: 68, total: 100, color: 'bg-amber-500' },
   ]);
 
-  const [achievements] = useState([
+  const [achievements, setAchievements] = useState([
     { id: 1, title: '7-Day Scholar', desc: 'Maintained a 7-day study streak', icon: Flame, color: 'bg-orange-50 border-orange-200 text-orange-600', unlocked: true },
     { id: 2, title: 'Quiz Master', desc: 'Completed over 20 quizzes', icon: Trophy, color: 'bg-indigo-50 border-indigo-200 text-indigo-600', unlocked: true },
     { id: 3, title: 'Accuracy King', desc: 'Scored above 90% in 5 consecutive tests', icon: Target, color: 'bg-emerald-50 border-emerald-200 text-emerald-600', unlocked: true },
@@ -60,6 +64,59 @@ export default function Analytics() {
     { id: 'QZ-106', title: 'Python Lists & Dictionaries', score: '100%', correct: '10/10', date: '20 Jul 2026', time: '08 mins', status: 'Perfect' },
     { id: 'QZ-105', title: 'Computer Networks - OSI Model', score: '60%', correct: '6/10', date: '18 Jul 2026', time: '12 mins', status: 'Review Needed' },
   ]);
+
+  // Analytics safety render array check implementation
+  const chartData = analyticsData?.weekly_progress || [
+    { day: 'Mon', hours: 0 },
+    { day: 'Tue', hours: 0 },
+    { day: 'Wed', hours: 0 },
+    { day: 'Thu', hours: 0 },
+    { day: 'Fri', hours: 0 },
+    { day: 'Sat', hours: 0 },
+    { day: 'Sun', hours: 0 },
+  ];
+
+  // Fetching aggregated analytics & achievements with safe handling for missing structures
+  useEffect(() => {
+    const fetchAnalyticsData = async () => {
+      try {
+        const data = await getAnalytics();
+        if (data) {
+          setAnalyticsData(data);
+          // Map response safely, falling back to existing defaults if properties are missing
+          setStats({
+            avgScore: data.avgScore ?? data.averageScore ?? stats.avgScore,
+            accuracy: data.accuracy ?? stats.accuracy,
+            quizzesAttempted: data.quizzesAttempted ?? data.totalQuizzes ?? stats.quizzesAttempted,
+            streak: data.streak ?? stats.streak
+          });
+
+          // Handle missing breakdowns temporarily or safely clean/hide to avoid crashes
+          if (Array.isArray(data.subjectPerformance) && data.subjectPerformance.length > 0) {
+            setSubjectPerformance(data.subjectPerformance);
+          }
+        }
+        
+        // Achievements data fetch
+        const achievementsData = await getAchievements();
+        if (achievementsData && Array.isArray(achievementsData)) {
+          // Re-map icons safely if backend provides objects without icon references
+          const mappedAchievements = achievementsData.map((item, index) => ({
+            id: item.id || index + 1,
+            title: item.title || 'Milestone Unlocked',
+            desc: item.desc || item.description || '',
+            icon: item.icon || Trophy,
+            color: item.color || 'bg-indigo-50 border-indigo-200 text-indigo-600',
+            unlocked: item.unlocked ?? true
+          }));
+          setAchievements(mappedAchievements);
+        }
+      } catch (err) {
+        console.error("Error fetching analytics:", err);
+      }
+    };
+    fetchAnalyticsData();
+  }, []);
 
   return (
     <motion.div 
@@ -191,11 +248,11 @@ export default function Analytics() {
           </div>
 
           <div className="flex justify-between items-center text-xs text-slate-400 font-bold border-t border-slate-100 pt-3 mt-2">
-            <span>Quiz 1</span>
-            <span>Quiz 5</span>
-            <span>Quiz 10</span>
-            <span>Quiz 15</span>
-            <span>Latest</span>
+            <span>{chartData[0]?.day || 'Mon'}</span>
+            <span>{chartData[1]?.day || 'Tue'}</span>
+            <span>{chartData[2]?.day || 'Wed'}</span>
+            <span>{chartData[3]?.day || 'Thu'}</span>
+            <span>{chartData[4]?.day || 'Fri'}</span>
           </div>
         </motion.div>
 
@@ -207,20 +264,24 @@ export default function Analytics() {
           </div>
 
           <div className="space-y-4 pt-2">
-            {subjectPerformance.map((item, idx) => (
-              <div key={idx} className="space-y-1.5">
-                <div className="flex justify-between text-xs font-bold">
-                  <span className="text-slate-700">{item.subject}</span>
-                  <span className="text-slate-900 font-black">{item.score}%</span>
+            {subjectPerformance && subjectPerformance.length > 0 ? (
+              subjectPerformance.map((item, idx) => (
+                <div key={idx} className="space-y-1.5">
+                  <div className="flex justify-between text-xs font-bold">
+                    <span className="text-slate-700">{item.subject}</span>
+                    <span className="text-slate-900 font-black">{item.score}%</span>
+                  </div>
+                  <div className="w-full bg-slate-100 h-2.5 rounded-full overflow-hidden">
+                    <div 
+                      className={`h-full ${item.color || 'bg-indigo-600'} rounded-full transition-all duration-500`}
+                      style={{ width: `${item.score}%` }}
+                    ></div>
+                  </div>
                 </div>
-                <div className="w-full bg-slate-100 h-2.5 rounded-full overflow-hidden">
-                  <div 
-                    className={`h-full ${item.color} rounded-full transition-all duration-500`}
-                    style={{ width: `${item.score}%` }}
-                  ></div>
-                </div>
-              </div>
-            ))}
+              ))
+            ) : (
+              <p className="text-xs text-slate-400 py-4 text-center">Subject breakdowns currently unavailable.</p>
+            )}
           </div>
         </motion.div>
 
@@ -235,7 +296,7 @@ export default function Analytics() {
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           {achievements.map((item) => {
-            const Icon = item.icon;
+            const Icon = typeof item.icon === 'function' ? item.icon : Trophy;
             return (
               <div 
                 key={item.id} 

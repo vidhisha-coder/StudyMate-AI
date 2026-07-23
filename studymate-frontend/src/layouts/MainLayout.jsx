@@ -15,9 +15,9 @@ export default function MainLayout() {
         <Sidebar />
       </div>
 
-      {/* 2. DYNAMIC CONTENT AREA: Changed overflow-hidden to overflow-y-auto */}
+      {/* 2. DYNAMIC CONTENT AREA */}
       <main className="flex-1 overflow-y-auto custom-scrollbar h-full min-w-0 relative z-10 flex flex-col justify-start">
-        {/* React Router injects the active page view right here */}
+        {/* React Router injects active page views (Dashboard, Planner, Analytics etc.) */}
         <Outlet />
       </main>
     </div>

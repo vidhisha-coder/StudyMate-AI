@@ -2,7 +2,8 @@ import React, { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { Eye, EyeOff, Mail, Lock, Sparkles, Loader2 } from "lucide-react";
-import { login } from "../services/authService";
+import { login as loginApiService } from "../services/authService";
+import { useAuth } from "../context/AuthContext"; // 👈 1. Import useAuth
 
 function Login() {
   const [showPassword, setShowPassword] = useState(false);
@@ -11,17 +12,25 @@ function Login() {
   const [loading, setLoading] = useState(false);
 
   const navigate = useNavigate();
+  const { login } = useAuth(); // 👈 2. Extract login function from AuthContext
 
   const handleLogin = async (e) => {
     e.preventDefault();
     setLoading(true);
 
     try {
-      const response = await login(email, password);
+      // API call to login
+      const response = await loginApiService(email, password);
 
-      localStorage.setItem("token", response.access_token);
+      // Extract user info from response (Fallback to email handle name if name missing)
+      const userDisplayName = response.name || response.user?.name || email.split("@")[0];
 
-      alert("Login Successful!");
+      // Save User Info for Dashboard Header
+      localStorage.setItem("user", JSON.stringify({ name: userDisplayName, email }));
+
+      // 👈 3. Call AuthContext login (This updates state & sets token)
+      login(response.access_token);
+
       navigate("/dashboard");
 
     } catch (error) {

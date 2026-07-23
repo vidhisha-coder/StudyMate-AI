@@ -1,5 +1,6 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
+import { Loader2 } from 'lucide-react';
 import DashboardHeader from '../components/dashboard/DashboardHeader.jsx';
 import StatsGrid from '../components/dashboard/StatsGrid.jsx';
 import AnalyticsChart from '../components/dashboard/AnalyticsChart.jsx';
@@ -13,35 +14,103 @@ const containerVariants = {
 };
 
 export default function Dashboard() {
-  const statsData = [
-    { label: "Recent Score", value: "88%", trend: "+5% last quiz", trendType: "up", type: "score" },
-    { label: "Accuracy", value: "92%", trend: "High accuracy", trendType: "up", type: "accuracy" },
-    { label: "Today's Progress", value: "75%", trend: "3 of 4 goals done", trendType: "up", type: "progress" },
-    { label: "Study Streak", value: "5 Days", trend: "Top 4% of students", trendType: "up", type: "streak" }
-  ];
+  const [userName, setUserName] = useState("User");
+  const [loading, setLoading] = useState(true);
 
-  const coursesData = [
-    { id: 1, name: "Intro to Computer Science", progress: 75, timeLeft: "2h 15m remaining" },
-    { id: 2, name: "Database Systems", progress: 45, timeLeft: "5h 40m remaining" },
-    { id: 3, name: "Operating Systems", progress: 90, timeLeft: "45m remaining" },
-    { id: 4, name: "Data Structures & Algorithms", progress: 20, timeLeft: "8h 10m remaining" },
-    { id: 5, name: "Computer Networks", progress: 10, timeLeft: "6h 30m remaining" },
-    { id: 6, name: "Web Development", progress: 60, timeLeft: "3h 00m remaining" }
-  ];
+  // States for backend mapped data
+  const [statsData, setStatsData] = useState([]);
+  const [activitiesData, setActivitiesData] = useState([]);
+  const [notesData, setNotesData] = useState([]);
+  const [coursesData, setCoursesData] = useState([]);
 
-  const notesData = [
-    { name: "Operating System.pdf", edited: "2 hours ago", size: "4.2 MB" },
-    { name: "Python Notes.pdf", edited: "Yesterday", size: "1.8 MB" },
-    { name: "Java Unit 3.pdf", edited: "3 days ago", size: "5.6 MB" },
-    { name: "AI Chapter 2.pdf", edited: "1 week ago", size: "3.1 MB" }
-  ];
+  useEffect(() => {
+    const fetchDashboardAnalytics = async () => {
+      try {
+        const token = localStorage.getItem("token");
+        const storedUser = localStorage.getItem("user");
 
-  const activitiesData = [
-    { title: "Uploaded DBMS Notes", time: "10 mins ago" },
-    { title: "Generated AI Quiz", time: "2 hours ago" },
-    { title: "Completed Operating Systems", time: "Yesterday" },
-    { title: "AI Summary Created", time: "3 days ago" }
-  ];
+        if (storedUser) {
+          const parsedUser = JSON.parse(storedUser);
+          setUserName(parsedUser.name || parsedUser.username || "Rudra");
+        }
+
+        // Backend API Request
+        const response = await fetch("http://127.0.0.1:8000/dashboard/analytics", {
+          method: "GET",
+          headers: {
+            "Authorization": `Bearer ${token}`,
+            "Content-Type": "application/json"
+          }
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+
+          // 1. Map Backend Stats to UI Stats Grid
+          const completionPercentage = data.study_tasks?.total > 0
+            ? Math.round((data.study_tasks.completed / data.study_tasks.total) * 100)
+            : 0;
+
+          setStatsData([
+            {
+              label: "Recent Score",
+              value: `${data.average_quiz_score_percent}%`,
+              trend: `${data.quizzes_taken} Quizzes taken`,
+              trendType: "up",
+              type: "score"
+            },
+            {
+              label: "Task Progress",
+              value: `${completionPercentage}%`,
+              trend: `${data.study_tasks.completed} of ${data.study_tasks.total} done`,
+              trendType: "up",
+              type: "progress"
+            },
+            {
+              label: "Notes Created",
+              value: `${data.summaries_created}`,
+              trend: `${data.flashcards_created} Flashcards`,
+              trendType: "up",
+              type: "accuracy"
+            },
+            {
+              label: "Achievements",
+              value: `${data.achievements_earned}`,
+              trend: "Earned badges",
+              trendType: "up",
+              type: "streak"
+            }
+          ]);
+
+          // 2. Map Recent Activity Feed
+          if (data.recent_activity && data.recent_activity.length > 0) {
+            const mappedActivities = data.recent_activity.map(act => ({
+              title: act.title || "Study Note Created",
+              time: act.created_at ? new Date(act.created_at).toLocaleDateString() : "Recently"
+            }));
+            setActivitiesData(mappedActivities);
+          }
+
+        } else {
+          console.error("Failed to fetch analytics from backend");
+        }
+      } catch (error) {
+        console.error("Error connecting dashboard to backend:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchDashboardAnalytics();
+  }, []);
+
+  if (loading) {
+    return (
+      <div className="w-full h-96 flex items-center justify-center">
+        <Loader2 className="w-8 h-8 text-indigo-600 animate-spin" />
+      </div>
+    );
+  }
 
   return (
     <motion.div 
@@ -51,9 +120,9 @@ export default function Dashboard() {
       className="w-full space-y-6 px-4 md:px-6 py-6 pb-12"
     >
       {/* Header Section */}
-      <DashboardHeader user="Rudra" />
+      <DashboardHeader user={userName} />
 
-      {/* Stats Cards Grid */}
+      {/* Stats Cards Grid (Dynamic DB Data) */}
       <StatsGrid stats={statsData} />
 
       {/* Weekly Graph & Continue Learning Section */}
@@ -78,12 +147,12 @@ export default function Dashboard() {
               </span>
             </div>
 
-            {/* Scrollable Container with Inline Tailwind Scrollbar Styling */}
-<div className="space-y-3.5 max-h-[320px] overflow-y-auto pr-2 [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-slate-200 hover:[&::-webkit-scrollbar-thumb]:bg-indigo-300 [&::-webkit-scrollbar-thumb]:rounded-full">
-  {coursesData.map(course => (
-    <CourseCard key={course.id} course={course} />
-  ))}
-</div>
+            {/* Scrollable Container */}
+            <div className="space-y-3.5 max-h-[320px] overflow-y-auto pr-2 [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-slate-200 hover:[&::-webkit-scrollbar-thumb]:bg-indigo-300 [&::-webkit-scrollbar-thumb]:rounded-full">
+              {coursesData.map(course => (
+                <CourseCard key={course.id} course={course} />
+              ))}
+            </div>
           </div>
         </div>
       </div>

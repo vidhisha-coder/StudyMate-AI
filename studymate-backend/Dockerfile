@@ -14,5 +14,5 @@ COPY . .
 # FastAPI is port pe chalega
 EXPOSE 8000
 
-# Container start hote hi ye command chalegi
-CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
+# Container start hote hi ye command chalegi (Bug 1 Fixed: app.main:app use kiya gaya hai)
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]

@@ -2,15 +2,13 @@ import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Calendar as CalendarIcon, Plus, CheckCircle2, Circle, Clock, X, 
-  Trash2, Target, Play, Pause, RotateCcw, Sparkles, Download, RefreshCw, GripVertical, ChevronLeft, ChevronRight 
+  Trash2, Target, Play, Pause, RotateCcw, Sparkles, Download, RefreshCw, GripVertical, ChevronLeft, ChevronRight, Loader2 
 } from 'lucide-react';
+import { getTasks, createTask, completeTask, deleteTask } from '../services/plannerService';
 
 export default function StudyPlanner() {
-  const [tasks, setTasks] = useState([
-    { id: 1, title: 'DBMS Chapter 3', subject: 'Database', date: '2026-07-24', start_time: '18:00', end_time: '19:30', priority: 'High', completed: false },
-    { id: 2, title: 'DSA Graph Algorithms', subject: 'Algorithms', date: '2026-07-24', start_time: '14:00', end_time: '15:30', priority: 'High', completed: true },
-    { id: 3, title: 'Java Multithreading', subject: 'Programming', date: '2026-07-24', start_time: '20:00', end_time: '21:00', priority: 'Medium', completed: false },
-  ]);
+  const [tasks, setTasks] = useState([]);
+  const [loading, setLoading] = useState(true);
 
   // Pomodoro Timer State
   const [pomoTime, setPomoTime] = useState(25 * 60);
@@ -23,7 +21,7 @@ export default function StudyPlanner() {
   const [newTask, setNewTask] = useState({ 
     title: '', 
     subject: 'Database', 
-    date: '2026-07-24', 
+    date: new Date().toISOString().split('T')[0], 
     start_time: '18:00', 
     end_time: '19:30', 
     priority: 'Medium' 
@@ -31,6 +29,21 @@ export default function StudyPlanner() {
 
   // Calendar Setup
   const daysInMonth = Array.from({ length: 31 }, (_, i) => i + 1);
+
+  // Load tasks on mount
+  useEffect(() => {
+    const fetchTasksData = async () => {
+      try {
+        const data = await getTasks();
+        setTasks(data);
+      } catch (err) {
+        console.error("Error fetching tasks:", err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchTasksData();
+  }, []);
 
   // Pomodoro Logic
   useEffect(() => {
@@ -49,32 +62,68 @@ export default function StudyPlanner() {
     return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
   };
 
-  const toggleTask = (id) => {
-    setTasks(tasks.map(t => t.id === id ? { ...t, completed: !t.completed } : t));
+  const toggleTask = async (id) => {
+    try {
+      await completeTask(id);
+      const updatedTasks = await getTasks();
+      setTasks(updatedTasks);
+    } catch (err) {
+      console.error("Error completing task:", err);
+    }
   };
 
-  const handleAddTask = (e) => {
+  const handleAddTask = async (e) => {
     e.preventDefault();
     if (!newTask.title) return;
-    setTasks([...tasks, { id: Date.now(), ...newTask, completed: false }]);
-    setNewTask({ title: '', subject: 'Database', date: '2026-07-24', start_time: '18:00', end_time: '19:30', priority: 'Medium' });
-    setIsAddModalOpen(false);
+    try {
+      const created = await createTask(newTask);
+      setTasks([...tasks, created]);
+      setNewTask({ 
+        title: '', 
+        subject: 'Database', 
+        date: new Date().toISOString().split('T')[0], 
+        start_time: '18:00', 
+        end_time: '19:30', 
+        priority: 'Medium' 
+      });
+      setIsAddModalOpen(false);
+    } catch (err) {
+      console.error("Error creating task:", err);
+    }
   };
 
-  const generateAiPlan = () => {
-    const aiTasks = [
-      { id: Date.now() + 1, title: 'AI: System Design Revision', subject: 'Architecture', date: '2026-07-24', start_time: '11:00', end_time: '12:30', priority: 'High', completed: false },
-      { id: Date.now() + 2, title: 'AI: Practice Quiz Questions', subject: 'Revision', date: '2026-07-24', start_time: '16:00', end_time: '17:00', priority: 'Medium', completed: false },
-    ];
-    setTasks([...tasks, ...aiTasks]);
-    setIsAiModalOpen(false);
+  const handleDeleteTask = async (id) => {
+    try {
+      await deleteTask(id);
+      setTasks(tasks.filter(t => t.id !== id));
+    } catch (err) {
+      console.error("Error deleting task:", err);
+    }
+  };
+
+  const generateAiPlan = async () => {
+    try {
+      // Create sample AI-driven task via backend
+      const aiPayload = {
+        title: 'AI: System Design Revision',
+        subject: 'Architecture',
+        date: new Date().toISOString().split('T')[0],
+        start_time: '11:00',
+        end_time: '12:30',
+        priority: 'High'
+      };
+      const created = await createTask(aiPayload);
+      setTasks([...tasks, created]);
+      setIsAiModalOpen(false);
+    } catch (err) {
+      console.error("Error generating AI plan:", err);
+    }
   };
 
   // 📅 Direct Google Calendar Export Handler
   const openGoogleCalendar = (task) => {
     const title = encodeURIComponent(task ? `${task.title} (${task.subject})` : "Study Session");
     const details = encodeURIComponent("Study session created with StudyMate AI Planner");
-    // Format date format for Google Calendar (YYYYMMDDTHHMMSSZ)
     const dateStr = task?.date ? task.date.replace(/-/g, '') : '20260724';
     const startTime = task?.start_time ? task.start_time.replace(':', '') + '00' : '100000';
     const endTime = task?.end_time ? task.end_time.replace(':', '') + '00' : '110000';
@@ -83,7 +132,6 @@ export default function StudyPlanner() {
     window.open(calendarUrl, '_blank');
   };
 
-  // 🖨️ Clean PDF Export Handler
   const handleExportPDF = () => {
     window.print();
   };
@@ -92,10 +140,17 @@ export default function StudyPlanner() {
   const progressPercent = tasks.length > 0 ? Math.round((completedCount / tasks.length) * 100) : 0;
   const strokeDashoffset = 251.2 - (251.2 * progressPercent) / 100;
 
+  if (loading) {
+    return (
+      <div className="w-full h-[80vh] flex items-center justify-center">
+        <Loader2 className="w-8 h-8 text-indigo-600 animate-spin" />
+      </div>
+    );
+  }
+
   return (
     <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="w-full space-y-6 px-4 md:px-6 py-6 pb-12 print-area">
       
-      {/* 🖨️ CSS rule to hide sidebar and non-printable elements during PDF Print */}
       <style>{`
         @media print {
           body * {
@@ -166,46 +221,50 @@ export default function StudyPlanner() {
             </div>
 
             <div className="space-y-3">
-              {tasks.map((task) => (
-                <motion.div 
-                  layout
-                  key={task.id} 
-                  onClick={() => toggleTask(task.id)}
-                  className={`flex items-center justify-between p-4 rounded-2xl border cursor-pointer transition-all ${
-                    task.completed ? 'bg-slate-50/60 border-slate-200 opacity-60 line-through' : 'bg-white border-slate-200/80 hover:border-indigo-300 shadow-sm'
-                  }`}
-                >
-                  <div className="flex items-center gap-3">
-                    <GripVertical size={16} className="text-slate-300 hover:text-slate-500 cursor-grab no-print" />
-                    {task.completed ? <CheckCircle2 size={20} className="text-indigo-600 flex-shrink-0" /> : <Circle size={20} className="text-slate-400 flex-shrink-0" />}
-                    <div>
-                      <span className="font-bold text-slate-800 text-sm md:text-base block">{task.title}</span>
-                      <span className="text-[11px] font-semibold text-slate-400">{task.subject}</span>
+              {tasks.length === 0 ? (
+                <p className="text-xs text-slate-400 text-center py-6">No tasks found. Add your first study block!</p>
+              ) : (
+                tasks.map((task) => (
+                  <motion.div 
+                    layout
+                    key={task.id} 
+                    onClick={() => toggleTask(task.id)}
+                    className={`flex items-center justify-between p-4 rounded-2xl border cursor-pointer transition-all ${
+                      task.completed ? 'bg-slate-50/60 border-slate-200 opacity-60 line-through' : 'bg-white border-slate-200/80 hover:border-indigo-300 shadow-sm'
+                    }`}
+                  >
+                    <div className="flex items-center gap-3">
+                      <GripVertical size={16} className="text-slate-300 hover:text-slate-500 cursor-grab no-print" />
+                      {task.completed ? <CheckCircle2 size={20} className="text-indigo-600 flex-shrink-0" /> : <Circle size={20} className="text-slate-400 flex-shrink-0" />}
+                      <div>
+                        <span className="font-bold text-slate-800 text-sm md:text-base block">{task.title}</span>
+                        <span className="text-[11px] font-semibold text-slate-400">{task.subject}</span>
+                      </div>
                     </div>
-                  </div>
 
-                  <div className="flex items-center gap-2 text-xs font-semibold text-slate-500">
-                    <span className="flex items-center gap-1 bg-slate-100 px-2.5 py-1 rounded-lg">
-                      <Clock size={12} /> {task.start_time} - {task.end_time}
-                    </span>
-                    <span className={`px-2.5 py-1 rounded-lg font-bold ${
-                      task.priority === 'High' ? 'bg-rose-50 text-rose-600' : task.priority === 'Medium' ? 'bg-amber-50 text-amber-600' : 'bg-emerald-50 text-emerald-600'
-                    }`}>
-                      {task.priority}
-                    </span>
-                    <button onClick={(e) => { e.stopPropagation(); openGoogleCalendar(task); }} className="p-1 hover:text-indigo-600 text-slate-400 rounded-lg no-print" title="Sync Task to Google Calendar">
-                      <CalendarIcon size={16} />
-                    </button>
-                    <button onClick={(e) => { e.stopPropagation(); setTasks(tasks.filter(t => t.id !== task.id)); }} className="p-1 hover:text-rose-600 text-slate-400 rounded-lg no-print">
-                      <Trash2 size={16} />
-                    </button>
-                  </div>
-                </motion.div>
-              ))}
+                    <div className="flex items-center gap-2 text-xs font-semibold text-slate-500">
+                      <span className="flex items-center gap-1 bg-slate-100 px-2.5 py-1 rounded-lg">
+                        <Clock size={12} /> {task.start_time} - {task.end_time}
+                      </span>
+                      <span className={`px-2.5 py-1 rounded-lg font-bold ${
+                        task.priority === 'High' ? 'bg-rose-50 text-rose-600' : task.priority === 'Medium' ? 'bg-amber-50 text-amber-600' : 'bg-emerald-50 text-emerald-600'
+                      }`}>
+                        {task.priority}
+                      </span>
+                      <button onClick={(e) => { e.stopPropagation(); openGoogleCalendar(task); }} className="p-1 hover:text-indigo-600 text-slate-400 rounded-lg no-print" title="Sync Task to Google Calendar">
+                        <CalendarIcon size={16} />
+                      </button>
+                      <button onClick={(e) => { e.stopPropagation(); handleDeleteTask(task.id); }} className="p-1 hover:text-rose-600 text-slate-400 rounded-lg no-print">
+                        <Trash2 size={16} />
+                      </button>
+                    </div>
+                  </motion.div>
+                ))
+              )}
             </div>
           </div>
 
-          {/* 🎯 Weekly Goal Card */}
+          {/* Weekly Goal Card */}
           <div className="bg-white/60 backdrop-blur-xl border border-white/60 p-6 rounded-[32px] shadow-sm space-y-3">
             <div className="flex justify-between items-center">
               <div className="flex items-center gap-2">
@@ -224,7 +283,6 @@ export default function StudyPlanner() {
         {/* Right Sidebar: Calendar + Pomodoro */}
         <div className="space-y-6 flex flex-col justify-between">
           
-          {/* 📅 CALENDAR WIDGET */}
           <div className="bg-white/60 backdrop-blur-xl border border-white/60 p-6 rounded-[32px] shadow-sm flex flex-col justify-between w-full">
             <div>
               <div className="flex items-center justify-between mb-6">
@@ -252,7 +310,7 @@ export default function StudyPlanner() {
             </div>
           </div>
 
-          {/* 🍅 POMODORO TIMER */}
+          {/* Pomodoro Timer */}
           <div className="bg-gradient-to-br from-slate-900 to-indigo-950 text-white p-6 rounded-[32px] shadow-lg flex flex-col justify-between space-y-4 no-print">
             <div className="flex justify-between items-center">
               <span className="text-xs font-extrabold uppercase tracking-widest text-indigo-400">Focus Timer</span>

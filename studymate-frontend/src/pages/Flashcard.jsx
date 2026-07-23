@@ -21,31 +21,14 @@ import {
   CheckCircle,
   Check,
   Shuffle,
-  Heart
+  Heart,
+  Trash2
 } from 'lucide-react';
+import { getFlashcards, createFlashcard, deleteFlashcard } from '../services/flashcardService';
 
 const containerVariants = {
   hidden: { opacity: 0, y: 10 },
   show: { opacity: 1, y: 0, transition: { duration: 0.3 } }
-};
-
-const AI_QUESTION_BANK = {
-  note_1: [
-    { id: 'q1', question: "What is Process Control Block (PCB)?", answer: "A data structure used by OS to store information about a specific process." },
-    { id: 'q2', question: "Define Virtual Memory.", answer: "A memory management technique that creates an illusion of larger main memory." },
-    { id: 'q3', question: "What is Deadlock in OS?", answer: "A state where processes are blocked because each holds a resource and waits for another." },
-    { id: 'q4', question: "Difference between Multiprogramming & Multitasking?", answer: "Multiprogramming increases CPU utilization; Multitasking allows interactive user response time." },
-    { id: 'q5', question: "What is Context Switching?", answer: "Storing state of a process so it can be resumed later from the same point." }
-  ],
-  note_2: [
-    { id: 'q6', question: "What is 3NF in DBMS?", answer: "A table is in 3NF if it is in 2NF and has no transitive functional dependencies." },
-    { id: 'q7', question: "WHERE vs HAVING clause?", answer: "WHERE filters rows before grouping; HAVING filters groups after GROUP BY." },
-    { id: 'q8', question: "What is ACID property?", answer: "Atomicity, Consistency, Isolation, and Durability - ensuring reliable DB transactions." },
-  ],
-  note_3: [
-    { id: 'q9', question: "Time complexity of Python Dict lookup?", answer: "Average case O(1) time complexity due to hash table structure." },
-    { id: 'q10', question: "Difference between List and Tuple?", answer: "Lists are mutable (changeable); Tuples are immutable." },
-  ]
 };
 
 export default function Flashcard() {
@@ -69,15 +52,20 @@ export default function Flashcard() {
   const [isFlipped, setIsFlipped] = useState(false);
   const [favoriteCards, setFavoriteCards] = useState({});
 
-  const [historyDecks, setHistoryDecks] = useState([
-    { 
-      id: 101, 
-      noteId: 'note_1',
-      noteTitle: 'Operating Systems - Ch 3 Notes', 
-      cards: AI_QUESTION_BANK.note_1.slice(0, 3), 
-      createdAt: '22 Jul 2026' 
-    }
-  ]);
+  const [historyDecks, setHistoryDecks] = useState([]);
+
+  // Mount pe fetch karo
+  useEffect(() => {
+    const fetchCards = async () => {
+      try {
+        const data = await getFlashcards(); // [{id, topic, question, answer, created_at}]
+        setHistoryDecks(data); 
+      } catch (err) {
+        console.error("Error fetching flashcards:", err);
+      }
+    };
+    fetchCards();
+  }, []);
 
   useEffect(() => {
     loadFlashcardsForNote(selectedNoteId);
@@ -89,49 +77,85 @@ export default function Flashcard() {
     setIsFlipped(false);
 
     setTimeout(() => {
-      const defaultCards = AI_QUESTION_BANK[noteId] ? AI_QUESTION_BANK[noteId].slice(0, 3) : [];
-      setActiveCards(defaultCards);
+      const currentNoteTitle = uploadedNotes.find(n => n.id === noteId)?.title;
+      const filtered = historyDecks.filter(d => d.noteId === noteId || d.topic === currentNoteTitle);
+      if (filtered.length > 0) {
+        setActiveCards(filtered);
+      } else {
+        // Default dummy mock if API returns empty for that note
+        setActiveCards([
+          { id: 'q1', question: "What is Process Control Block (PCB)?", answer: "A data structure used by OS to store information about a specific process." },
+          { id: 'q2', question: "Define Virtual Memory.", answer: "A memory management technique that creates an illusion of larger main memory." }
+        ]);
+      }
       setLoading(false);
     }, 200);
   };
 
-  const handleGenerateAI = () => {
+  const handleGenerateAI = async () => {
     setGenerating(true);
     setIsFlipped(false);
 
-    setTimeout(() => {
-      const availableBank = AI_QUESTION_BANK[selectedNoteId] || [];
-      const shuffled = [...availableBank].sort(() => 0.5 - Math.random());
-      const newGeneratedCards = shuffled.slice(0, Math.min(3, shuffled.length));
-
-      setActiveCards(newGeneratedCards);
+    try {
+      const currentNoteTitle = uploadedNotes.find(n => n.id === selectedNoteId)?.title || "Study Deck";
+      
+      // Simulated AI generation response mapping to schema
+      const generatedMock = [
+        { id: Date.now(), topic: currentNoteTitle, question: `Generated Concept for ${currentNoteTitle}`, answer: "AI generated flashcard answer description." },
+        { id: Date.now() + 1, topic: currentNoteTitle, question: `Core Architecture of ${currentNoteTitle}`, answer: "Detailed component breakdown and operational workflow." }
+      ];
+      
+      setActiveCards(generatedMock);
       setCurrentCardIndex(0);
+    } catch (err) {
+      console.error("Error generating flashcards via AI:", err);
+      alert("Failed to generate flashcards.");
+    } finally {
       setGenerating(false);
-    }, 800);
+    }
   };
 
-  const handleSaveToMySQL = () => {
+  const handleSaveToMySQL = async () => {
     if (activeCards.length === 0) return;
     setSaving(true);
 
-    setTimeout(() => {
+    try {
       const currentNoteTitle = uploadedNotes.find(n => n.id === selectedNoteId)?.title || "Study Deck";
-      const newHistoryItem = {
-        id: Date.now(),
-        noteId: selectedNoteId,
-        noteTitle: currentNoteTitle,
-        cards: [...activeCards],
-        createdAt: new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })
+      
+      // Save current active card to backend database via createFlashcard service
+      const currentCard = activeCards[currentCardIndex] || activeCards[0];
+      const payload = {
+        topic: currentNoteTitle,
+        question: currentCard.question,
+        answer: currentCard.answer
       };
 
-      setHistoryDecks(prev => [newHistoryItem, ...prev]);
+      const savedCard = await createFlashcard(payload);
+      setHistoryDecks(prev => [savedCard, ...prev]);
+      
       setSaving(false);
       setIsSaved(true);
       setTimeout(() => setIsSaved(false), 2500);
-    }, 600);
+    } catch (err) {
+      console.error("Error saving flashcard to backend:", err);
+      setSaving(false);
+      alert("Failed to save flashcard.");
+    }
   };
 
-  // NATIVE INSTANT PDF GENERATOR (NO CANVAS ERROR, NO SIDEBAR)
+  // Delete Action
+  const handleDelete = async (id, e) => {
+    if (e) e.stopPropagation();
+    try {
+      await deleteFlashcard(id);
+      setHistoryDecks(historyDecks.filter(card => card.id !== id));
+    } catch (err) {
+      console.error("Error deleting flashcard:", err);
+      setHistoryDecks(historyDecks.filter(card => card.id !== id));
+    }
+  };
+
+  // NATIVE INSTANT PDF GENERATOR
   const handleDownloadPDF = () => {
     if (activeCards.length === 0) return;
     setDownloading(true);
@@ -140,8 +164,7 @@ export default function Flashcard() {
       const doc = new jsPDF();
       const currentNoteTitle = uploadedNotes.find(n => n.id === selectedNoteId)?.title || 'Deck';
 
-      // Header Branding
-      doc.setFillColor(79, 70, 229); // Indigo background
+      doc.setFillColor(79, 70, 229);
       doc.rect(0, 0, 210, 25, 'F');
       
       doc.setTextColor(255, 255, 255);
@@ -157,18 +180,15 @@ export default function Flashcard() {
       let yPos = 46;
 
       activeCards.forEach((card, index) => {
-        // Card Box
         doc.setFillColor(248, 250, 252);
         doc.setDrawColor(226, 232, 240);
         doc.roundedRect(14, yPos, 182, 38, 3, 3, 'FD');
 
-        // Question
         doc.setTextColor(67, 56, 202);
         doc.setFont('helvetica', 'bold');
         doc.setFontSize(11);
         doc.text(`Q${index + 1}: ${card.question}`, 18, yPos + 12);
 
-        // Answer
         doc.setTextColor(30, 41, 59);
         doc.setFont('helvetica', 'normal');
         doc.setFontSize(10);
@@ -178,7 +198,6 @@ export default function Flashcard() {
 
         yPos += 44;
 
-        // Page Break if cards exceed page height
         if (yPos > 260 && index < activeCards.length - 1) {
           doc.addPage();
           yPos = 20;
@@ -274,7 +293,6 @@ export default function Flashcard() {
             {isSaved ? "Saved!" : "Save Deck"}
           </button>
 
-          {/* Export PDF */}
           <button 
             onClick={handleDownloadPDF}
             disabled={downloading || activeCards.length === 0}
@@ -523,26 +541,34 @@ export default function Flashcard() {
                 historyDecks.map((deck) => (
                   <div key={deck.id} className="p-3.5 bg-slate-50 rounded-2xl border border-slate-100 hover:border-indigo-200 transition-all flex items-center justify-between">
                     <div>
-                      <p className="font-bold text-xs md:text-sm text-slate-800">{deck.noteTitle}</p>
+                      <p className="font-bold text-xs md:text-sm text-slate-800">{deck.topic || "Study Deck"}</p>
                       <div className="flex items-center gap-3 text-[11px] text-slate-400 mt-1 font-medium">
-                        <span>{deck.cards.length} Cards</span>
+                        <span className="truncate max-w-[150px]">{deck.question || "Flashcard item"}</span>
                         <span>•</span>
-                        <span>{deck.createdAt}</span>
+                        <span>{deck.created_at ? new Date(deck.created_at).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : "Recent"}</span>
                       </div>
                     </div>
 
-                    <button 
-                      onClick={() => {
-                        setSelectedNoteId(deck.noteId);
-                        setActiveCards(deck.cards);
-                        setCurrentCardIndex(0);
-                        setIsFlipped(false);
-                        setHistoryOpen(false);
-                      }}
-                      className="bg-indigo-600 text-white text-xs px-3 py-1.5 rounded-xl font-bold hover:bg-indigo-700"
-                    >
-                      Load Deck
-                    </button>
+                    <div className="flex items-center gap-2">
+                      <button 
+                        onClick={() => {
+                          setActiveCards([deck]);
+                          setCurrentCardIndex(0);
+                          setIsFlipped(false);
+                          setHistoryOpen(false);
+                        }}
+                        className="bg-indigo-600 text-white text-xs px-3 py-1.5 rounded-xl font-bold hover:bg-indigo-700"
+                      >
+                        Load Deck
+                      </button>
+                      <button 
+                        onClick={(e) => handleDelete(deck.id, e)}
+                        className="p-1.5 bg-rose-50 hover:bg-rose-100 text-rose-600 rounded-xl transition-all"
+                        title="Delete Flashcard"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
                   </div>
                 ))
               ) : (

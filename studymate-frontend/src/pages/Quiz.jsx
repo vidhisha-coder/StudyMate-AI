@@ -1,9 +1,27 @@
-import React, { useState } from "react";
-import { motion } from "framer-motion";
-import { HelpCircle, Sparkles, ChevronDown, CheckSquare, Square, FileText, ArrowRight, Eye, CheckCircle2, Award, RotateCcw, Send } from "lucide-react";
+import React, { useState, useEffect } from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import { 
+  HelpCircle, 
+  Sparkles, 
+  ChevronDown, 
+  CheckSquare, 
+  Square, 
+  FileText, 
+  ArrowRight, 
+  Eye, 
+  CheckCircle2, 
+  Award, 
+  Send,
+  X,
+  Check,
+  XCircle,
+  MinusCircle,
+  Trash2,
+} from "lucide-react";
 import {
   generateQuiz,
   submitQuiz,
+  getQuizHistory,
 } from "../services/quizService";
 
 export default function Quiz() {
@@ -27,12 +45,84 @@ export default function Quiz() {
   const [submitted, setSubmitted] = useState(false);
   const [score, setScore] = useState(0);
 
-  // Mock text mapping per document (Replace this with dynamic context from Upload/Notes state or localStorage)
+  // Dynamic Quiz History, Single View Modal & View All Modal States
+  const [recentQuizzes, setRecentQuizzes] = useState([]);
+  const [viewingQuiz, setViewingQuiz] = useState(null);
+  const [showAllModal, setShowAllModal] = useState(false);
+
+  // Mock text mapping per document
   const notesTextMap = {
     "Data Structures Notes.pdf": "Arrays, Linked Lists, Trees, and Graphs are fundamental data structures. Time complexity of QuickSort is O(n log n). Stacks follow LIFO and Queues follow FIFO.",
     "Operating Systems Intro.pdf": "An Operating System manages hardware resources. Processes undergo context switching. Deadlocks occur under four Coffman conditions: Mutual Exclusion, Hold and Wait, No Preemption, Circular Wait.",
     "Database Systems Architecture.pdf": "Relational databases use SQL for queries. Normalization reduces redundancy. ACID properties stand for Atomicity, Consistency, Isolation, and Durability."
   };
+
+  // Helper function to extract questions from any history item response
+  const extractQuestionsFromItem = (item) => {
+    const rawQuestions = item.questionsList || item.questions_data || item.questions || item.quiz_questions || item.items || item.details;
+    if (Array.isArray(rawQuestions) && rawQuestions.length > 0) {
+      return rawQuestions.map(q => ({
+        question: q.question || q.questionText || q.title || "Question Text Unavailable",
+        options: q.options || q.choices || [],
+        userAnswer: q.userAnswer ?? q.user_answer ?? q.selectedOption ?? null,
+        correctAnswer: q.correctAnswer || q.answer || q.correct_answer || ""
+      }));
+    }
+    return null;
+  };
+
+  // Fetch Quiz History from Backend API & merge with Local Persistence
+  const fetchHistory = async () => {
+    try {
+      // Load locally stored detailed history first if available
+      const storedLocalHistory = JSON.parse(localStorage.getItem("local_quiz_history") || "[]");
+      
+      const historyData = await getQuizHistory();
+      if (Array.isArray(historyData)) {
+        setRecentQuizzes(() => {
+          return historyData.map((item, idx) => {
+            // Try extracting questions from backend object
+            let extracted = extractQuestionsFromItem(item);
+
+            // If backend didn't return questions list, check if we saved it in localStorage
+            if (!extracted) {
+              const matchedLocal = storedLocalHistory.find(
+                p => (p.id && item.id && p.id === item.id) || (p.topic === item.topic && p.score === item.score)
+              );
+              if (matchedLocal && matchedLocal.questionsList) {
+                extracted = matchedLocal.questionsList;
+              }
+            }
+
+            return {
+              ...item,
+              id: item.id || `quiz-${idx}-${Date.now()}`,
+              questionsList: extracted || []
+            };
+          });
+        });
+      } else if (storedLocalHistory.length > 0) {
+        setRecentQuizzes(storedLocalHistory);
+      }
+    } catch (err) {
+      console.error("Failed to fetch quiz history:", err);
+      const storedLocalHistory = JSON.parse(localStorage.getItem("local_quiz_history") || "[]");
+      if (storedLocalHistory.length > 0) {
+        setRecentQuizzes(storedLocalHistory);
+      }
+    }
+  };
+
+  useEffect(() => {
+    fetchHistory();
+
+    const handleSubmittedEvent = () => fetchHistory();
+    window.addEventListener("quizSubmitted", handleSubmittedEvent);
+
+    return () => {
+      window.removeEventListener("quizSubmitted", handleSubmittedEvent);
+    };
+  }, []);
 
   const toggleType = (key) => {
     setQuestionTypes(prev => ({ ...prev, [key]: !prev[key] }));
@@ -46,11 +136,8 @@ export default function Quiz() {
       setScore(0);
 
       const contextText = notesTextMap[selectedNotes] || "General computer science fundamentals and core programming concepts.";
-      
-      // Pure integer parse e.g. "5 Questions" -> 5
       const parsedCount = parseInt(numQuestions, 10) || 5;
 
-      // Backend API Call with alias keys
       const data = await generateQuiz({
         text: contextText,
         numQuestions: parsedCount,
@@ -68,7 +155,6 @@ export default function Quiz() {
         extractedQuestions = data.questions;
       }
 
-      // STRICT LIMIT: Selected count tak hi render honge
       setQuiz(extractedQuestions.slice(0, parsedCount));
 
     } catch (err) {
@@ -79,63 +165,90 @@ export default function Quiz() {
     }
   };
 
-  // Track answer selection
   const handleOptionSelect = (questionIndex, selectedOption) => {
-    if (submitted) return; // Prevent changing answer after submit
+    if (submitted) return;
     setUserAnswers(prev => ({
       ...prev,
       [questionIndex]: selectedOption
     }));
   };
 
-  // Calculate and Submit Quiz
   const handleSubmitQuiz = async () => {
-  if (Object.keys(userAnswers).length < quiz.length) {
-    const confirmSubmit = window.confirm(
-      "You haven't answered all questions. Submit anyway?"
-    );
-
-    if (!confirmSubmit) return;
-  }
-
-  let calculatedScore = 0;
-
-  quiz.forEach((q, idx) => {
-    const correctAnswer = q.correctAnswer || q.answer;
-
-    if (
-      userAnswers[idx] &&
-      correctAnswer &&
-      userAnswers[idx] === correctAnswer
-    ) {
-      calculatedScore++;
+    if (Object.keys(userAnswers).length < quiz.length) {
+      alert(`Please answer all ${quiz.length} questions! You have answered only ${Object.keys(userAnswers).length} so far.`);
+      return;
     }
-  });
 
-  try {
-    await submitQuiz({
+    let calculatedScore = 0;
+
+    const formattedQuestionsList = quiz.map((q, idx) => ({
+      question: q.question || q.questionText || "Question text missing",
+      options: q.options || [],
+      userAnswer: userAnswers[idx] || null,
+      correctAnswer: q.correctAnswer || q.answer
+    }));
+
+    quiz.forEach((q, idx) => {
+      const correctAnswer = q.correctAnswer || q.answer;
+      if (userAnswers[idx] && correctAnswer && userAnswers[idx] === correctAnswer) {
+        calculatedScore++;
+      }
+    });
+
+    const payload = {
       topic: selectedNotes,
       score: calculatedScore,
       total_questions: quiz.length,
+      questions: quiz.length,
+      level: difficulty,
+      questionsList: formattedQuestionsList
+    };
+
+    try {
+      await submitQuiz(payload);
+
+      const newQuizHistoryEntry = {
+        id: Date.now(),
+        topic: selectedNotes,
+        name: selectedNotes,
+        score: calculatedScore,
+        total_questions: quiz.length,
+        questions: quiz.length,
+        level: difficulty,
+        time: "Just now",
+        questionsList: formattedQuestionsList
+      };
+
+      setRecentQuizzes(prev => {
+        const updated = [newQuizHistoryEntry, ...prev];
+        localStorage.setItem("local_quiz_history", JSON.stringify(updated));
+        return updated;
+      });
+
+      setScore(calculatedScore);
+      setSubmitted(true);
+
+      alert("✅ Quiz submitted successfully!");
+    } catch (err) {
+      console.error("Quiz Submit API Error Details:", err.response?.data || err);
+      const serverMessage = err.response?.data?.message || err.response?.data?.error || err.message;
+      alert(`Failed to save quiz result: ${serverMessage}`);
+    }
+  };
+
+  const handleDeleteQuizHistory = async (e, quizId) => {
+    e.stopPropagation();
+
+    if (!window.confirm("Are you sure you want to delete this quiz record?")) {
+      return;
+    }
+
+    setRecentQuizzes(prev => {
+      const filtered = prev.filter((item, idx) => (item.id || idx) !== quizId);
+      localStorage.setItem("local_quiz_history", JSON.stringify(filtered));
+      return filtered;
     });
-
-    setScore(calculatedScore);
-setSubmitted(true);
-
-window.dispatchEvent(new Event("quizSubmitted"));
-
-alert("✅ Quiz submitted successfully!");
-  } catch (err) {
-    console.error(err);
-    alert("Failed to save quiz result.");
-  }
-};
-
-  // Mock Recent Quizzes History
-  const recentQuizzes = [
-    { name: "Data Structures Quiz", questions: "10 Questions", level: "Medium", time: "2h ago" },
-    { name: "DBMS Quiz", questions: "15 Questions", level: "Easy", time: "5d ago" }
-  ];
+  };
 
   return (
     <div className="w-full h-full grid grid-rows-[auto_1fr] overflow-hidden px-6 pt-5 pb-6 gap-5 box-border">
@@ -168,7 +281,7 @@ alert("✅ Quiz submitted successfully!");
                 <p className="text-slate-400 font-medium text-[13px] mt-0.5">Create quizzes directly from your notes context.</p>
               </div>
 
-              {/* 1. Select Notes Dropdown */}
+              {/* Select Notes Dropdown */}
               <div className="space-y-1.5">
                 <label className="text-[11px] font-bold uppercase tracking-widest text-slate-400">Select Notes</label>
                 <div className="relative">
@@ -185,7 +298,7 @@ alert("✅ Quiz submitted successfully!");
                 </div>
               </div>
 
-              {/* 2. Number of Questions & Difficulty Dual Grid */}
+              {/* Number of Questions & Difficulty */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-1.5">
                   <label className="text-[11px] font-bold uppercase tracking-widest text-slate-400">Number of Questions</label>
@@ -220,26 +333,42 @@ alert("✅ Quiz submitted successfully!");
                 </div>
               </div>
 
-              {/* 3. Question Type Checkbox Row Inline Filter */}
+              {/* Question Types */}
               <div className="space-y-2">
                 <label className="text-[11px] font-bold uppercase tracking-widest text-slate-400">Question Type</label>
                 <div className="flex flex-wrap gap-5 pt-1">
-                  
-                  <button type="button" onClick={() => toggleType("mcq")} className="flex items-center gap-2 group text-slate-700 text-[13.5px] font-bold">
+                  <button 
+                    type="button" 
+                    role="checkbox"
+                    aria-checked={questionTypes.mcq}
+                    onClick={() => toggleType("mcq")} 
+                    className="flex items-center gap-2 group text-slate-700 text-[13.5px] font-bold cursor-pointer"
+                  >
                     {questionTypes.mcq ? <CheckSquare size={18} className="text-indigo-600" /> : <Square size={18} className="text-slate-300 group-hover:border-slate-400" />}
                     MCQ
                   </button>
 
-                  <button type="button" onClick={() => toggleType("trueFalse")} className="flex items-center gap-2 group text-slate-700 text-[13.5px] font-bold">
+                  <button 
+                    type="button" 
+                    role="checkbox"
+                    aria-checked={questionTypes.trueFalse}
+                    onClick={() => toggleType("trueFalse")} 
+                    className="flex items-center gap-2 group text-slate-700 text-[13.5px] font-bold cursor-pointer"
+                  >
                     {questionTypes.trueFalse ? <CheckSquare size={18} className="text-indigo-600" /> : <Square size={18} className="text-slate-300 group-hover:border-slate-400" />}
                     True / False
                   </button>
 
-                  <button type="button" onClick={() => toggleType("shortAnswer")} className="flex items-center gap-2 group text-slate-700 text-[13.5px] font-bold">
+                  <button 
+                    type="button" 
+                    role="checkbox"
+                    aria-checked={questionTypes.shortAnswer}
+                    onClick={() => toggleType("shortAnswer")} 
+                    className="flex items-center gap-2 group text-slate-700 text-[13.5px] font-bold cursor-pointer"
+                  >
                     {questionTypes.shortAnswer ? <CheckSquare size={18} className="text-indigo-600" /> : <Square size={18} className="text-slate-300 group-hover:border-slate-400" />}
                     Short Answer
                   </button>
-                  
                 </div>
               </div>
 
@@ -247,7 +376,7 @@ alert("✅ Quiz submitted successfully!");
               <button
                 onClick={handleGenerateQuiz}
                 disabled={loading}
-                className="w-full mt-2 bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-400 text-white font-bold text-[14px] py-3.5 rounded-2xl transition-all shadow-md shadow-indigo-600/10 active:scale-[0.99] flex items-center justify-center gap-2"
+                className="w-full mt-2 bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-400 text-white font-bold text-[14px] py-3.5 rounded-2xl transition-all shadow-md shadow-indigo-600/10 active:scale-[0.99] flex items-center justify-center gap-2 cursor-pointer"
               >
                 {loading && <Sparkles size={16} className="animate-spin" />}
                 {loading ? "Constructing Diagnostic System..." : "Generate Quiz"}
@@ -275,7 +404,7 @@ alert("✅ Quiz submitted successfully!");
 
           </div>
 
-          {/* Generated Quiz Container Section */}
+          {/* Generated Quiz Section */}
           {quiz.length > 0 && (
             <div className="py-8 border-b border-slate-200/60 space-y-6">
               
@@ -328,7 +457,7 @@ alert("✅ Quiz submitted successfully!");
                             }
 
                             return (
-                              <label 
+                              <div 
                                 key={i} 
                                 onClick={() => handleOptionSelect(index, option)}
                                 className={`flex items-center gap-3 p-3 border rounded-xl cursor-pointer transition-all ${optionStyles}`}
@@ -337,12 +466,12 @@ alert("✅ Quiz submitted successfully!");
                                   type="radio" 
                                   name={`q${index}`} 
                                   checked={isSelected}
-                                  onChange={() => {}}
+                                  onChange={() => handleOptionSelect(index, option)}
                                   disabled={submitted}
-                                  className="accent-indigo-600" 
+                                  className="accent-indigo-600 cursor-pointer" 
                                 />
                                 <span className="text-[13px] text-slate-700">{option}</span>
-                              </label>
+                              </div>
                             );
                           })}
                         </div>
@@ -364,11 +493,15 @@ alert("✅ Quiz submitted successfully!");
                   </button>
                 ) : (
                   <button
-                    onClick={handleGenerateQuiz}
+                    onClick={() => {
+                      setQuiz([]);
+                      setSubmitted(false);
+                      setUserAnswers({});
+                    }}
                     className="bg-slate-800 hover:bg-slate-900 text-white font-bold text-sm px-6 py-3 rounded-2xl transition-all flex items-center gap-2 cursor-pointer"
                   >
-                    <RotateCcw size={16} />
-                    Retake / Regenerate
+                    <X size={16} />
+                    Close / Done
                   </button>
                 )}
               </div>
@@ -376,48 +509,320 @@ alert("✅ Quiz submitted successfully!");
             </div>
           )}
 
-          {/* Bottom Workspace Row: History Logger Stack */}
+          {/* Recent Quizzes History Stack */}
           <div className="pt-6 space-y-4">
             <div className="flex justify-between items-center">
               <h3 className="text-[15px] font-black text-slate-800 tracking-tight">Recent Quizzes</h3>
-              <button className="text-[12px] font-bold text-indigo-600 hover:text-indigo-700 flex items-center gap-1 transition-colors">
+              <button 
+                onClick={() => setShowAllModal(true)}
+                className="text-[12px] font-bold text-indigo-600 hover:text-indigo-700 flex items-center gap-1 transition-colors cursor-pointer"
+              >
                 View All <ArrowRight size={14} />
               </button>
             </div>
 
             <div className="grid grid-cols-1 gap-2.5">
-              {recentQuizzes.map((quizItem, idx) => (
-                <div 
-                  key={idx}
-                  className="flex items-center justify-between p-4 bg-slate-50/60 hover:bg-slate-50 border border-slate-200/60 rounded-2xl transition-all group"
-                >
-                  <div className="flex items-center gap-3.5">
-                    <div className="w-9 h-9 rounded-xl bg-indigo-50 border border-indigo-100/60 flex items-center justify-center text-indigo-600">
-                      <FileText size={16} />
-                    </div>
-                    <div>
-                      <h4 className="text-[13.5px] font-bold text-slate-800">{quizItem.name}</h4>
-                      <div className="flex items-center gap-2 text-[11px] font-medium text-slate-400 mt-0.5">
-                        <span>{quizItem.questions}</span>
-                        <span>•</span>
-                        <span className="bg-slate-200/60 px-1.5 py-0.2 rounded text-[10px] text-slate-600 font-bold uppercase">{quizItem.level}</span>
+              {recentQuizzes.length > 0 ? (
+                recentQuizzes.slice(0, 3).map((quizItem, idx) => (
+                  <div 
+                    key={quizItem.id || idx}
+                    onClick={() => setViewingQuiz(quizItem)}
+                    className="flex items-center justify-between p-4 bg-slate-50/60 hover:bg-slate-100/80 border border-slate-200/60 rounded-2xl transition-all group cursor-pointer"
+                  >
+                    <div className="flex items-center gap-3.5">
+                      <div className="w-9 h-9 rounded-xl bg-indigo-50 border border-indigo-100/60 flex items-center justify-center text-indigo-600">
+                        <FileText size={16} />
+                      </div>
+                      <div>
+                        <h4 className="text-[13.5px] font-bold text-slate-800">
+                          {quizItem.name || quizItem.topic || "Untitled Quiz"}
+                        </h4>
+                        <div className="flex items-center gap-2 text-[11px] font-medium text-slate-400 mt-0.5">
+                          <span>{quizItem.questions || `${quizItem.total_questions || 0} Questions`}</span>
+                          <span>•</span>
+                          <span className="bg-slate-200/60 px-1.5 py-0.2 rounded text-[10px] text-slate-600 font-bold uppercase">
+                            {quizItem.level || "Medium"}
+                          </span>
+                          {quizItem.score !== undefined && (
+                            <>
+                              <span>•</span>
+                              <span className="text-emerald-600 font-bold">
+                                Score: {quizItem.score}
+                              </span>
+                            </>
+                          )}
+                        </div>
                       </div>
                     </div>
-                  </div>
 
-                  <div className="flex items-center gap-4">
-                    <span className="text-[11px] font-bold text-slate-400">{quizItem.time}</span>
-                    <button className="p-2 bg-white border border-slate-200 rounded-xl text-slate-400 hover:text-indigo-600 hover:border-indigo-100 shadow-sm transition-all opacity-80 group-hover:opacity-100">
-                      <Eye size={15} />
-                    </button>
+                    <div className="flex items-center gap-3">
+                      <span className="text-[11px] font-bold text-slate-400">
+                        {quizItem.time || "Recently"}
+                      </span>
+                      <button 
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setViewingQuiz(quizItem);
+                        }}
+                        className="p-2 bg-white border border-slate-200 rounded-xl text-slate-400 hover:text-indigo-600 hover:border-indigo-200 shadow-sm transition-all group-hover:scale-105 cursor-pointer"
+                        title="View Quiz Answers Review"
+                      >
+                        <Eye size={15} />
+                      </button>
+                      <button 
+                        onClick={(e) => handleDeleteQuizHistory(e, quizItem.id || idx)}
+                        className="p-2 bg-white border border-slate-200 rounded-xl text-slate-400 hover:text-rose-600 hover:border-rose-200 shadow-sm transition-all group-hover:scale-105 cursor-pointer"
+                        title="Delete Quiz History Record"
+                      >
+                        <Trash2 size={15} />
+                      </button>
+                    </div>
                   </div>
-                </div>
-              ))}
+                ))
+              ) : (
+                <p className="text-sm font-medium text-slate-400 py-3">No recent quizzes found.</p>
+              )}
             </div>
           </div>
 
         </div>
       </div>
+
+      {/* POPUP 1: Detailed Review Modal */}
+      <AnimatePresence>
+        {viewingQuiz && (
+          <div className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4">
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="bg-white border border-slate-200 rounded-3xl p-6 shadow-2xl max-w-2xl w-full space-y-5 relative max-h-[85vh] flex flex-col"
+            >
+              {/* Header */}
+              <div className="flex justify-between items-start pb-3 border-b border-slate-100 flex-shrink-0">
+                <div>
+                  <h3 className="text-lg font-black text-slate-900 flex items-center gap-2">
+                    <FileText className="text-indigo-600 w-5 h-5" />
+                    {viewingQuiz.name || viewingQuiz.topic || "Quiz Details"}
+                  </h3>
+                  <div className="flex items-center gap-2 text-xs text-slate-400 font-bold mt-1">
+                    <span>Date: {viewingQuiz.time || "Recently"}</span>
+                    <span>•</span>
+                    <span className="text-emerald-600 font-extrabold">
+                      Score: {viewingQuiz.score !== undefined ? viewingQuiz.score : 0} / {viewingQuiz.questions || viewingQuiz.total_questions || 5}
+                    </span>
+                  </div>
+                </div>
+                <button 
+                  onClick={() => setViewingQuiz(null)}
+                  className="p-1.5 rounded-xl hover:bg-slate-100 text-slate-400 hover:text-slate-700 transition-all cursor-pointer"
+                >
+                  <X size={18} />
+                </button>
+              </div>
+
+              {/* Scrollable Questions & Options Detailed History */}
+              <div className="overflow-y-auto custom-scrollbar space-y-4 pr-1 flex-1">
+                {viewingQuiz.questionsList && viewingQuiz.questionsList.length > 0 ? (
+                  viewingQuiz.questionsList.map((q, qIdx) => {
+                    const userAns = q.userAnswer;
+                    const correctAns = q.correctAnswer;
+                    const hasAnswered = userAns !== null && userAns !== undefined && userAns !== "";
+                    const isCorrect = hasAnswered && userAns === correctAns;
+
+                    return (
+                      <div 
+                        key={qIdx}
+                        className={`border rounded-2xl p-4 space-y-3 ${
+                          !hasAnswered
+                            ? "bg-slate-50/70 border-slate-200"
+                            : isCorrect 
+                              ? "bg-emerald-50/30 border-emerald-200" 
+                              : "bg-rose-50/30 border-rose-200"
+                        }`}
+                      >
+                        <div className="flex items-start justify-between gap-3">
+                          <h4 className="font-bold text-[13.5px] text-slate-800">
+                            Q{qIdx + 1}. {q.question}
+                          </h4>
+                          {!hasAnswered ? (
+                            <span className="flex items-center gap-1 text-[11px] font-black bg-slate-200/80 text-slate-600 px-2.5 py-0.5 rounded-full flex-shrink-0">
+                              <MinusCircle size={12} /> Unanswered
+                            </span>
+                          ) : isCorrect ? (
+                            <span className="flex items-center gap-1 text-[11px] font-black bg-emerald-100 text-emerald-700 px-2.5 py-0.5 rounded-full flex-shrink-0">
+                              <Check size={12} /> Correct
+                            </span>
+                          ) : (
+                            <span className="flex items-center gap-1 text-[11px] font-black bg-rose-100 text-rose-700 px-2.5 py-0.5 rounded-full flex-shrink-0">
+                              <XCircle size={12} /> Incorrect
+                            </span>
+                          )}
+                        </div>
+
+                        {/* Options Breakdown */}
+                        {q.options && q.options.length > 0 && (
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                            {q.options.map((opt, oIdx) => {
+                              const isUserSelection = hasAnswered && userAns === opt;
+                              const isRightAnswer = correctAns === opt;
+
+                              let style = "bg-white border-slate-200 text-slate-600";
+                              if (isRightAnswer) {
+                                style = "bg-emerald-100 border-emerald-400 text-emerald-900 font-bold";
+                              } else if (isUserSelection && !isRightAnswer) {
+                                style = "bg-rose-100 border-rose-400 text-rose-900 font-bold line-through";
+                              }
+
+                              return (
+                                <div 
+                                  key={oIdx} 
+                                  className={`p-2.5 border rounded-xl text-xs flex items-center justify-between ${style}`}
+                                >
+                                  <span>{opt}</span>
+                                  {isUserSelection && (
+                                    <span className="text-[10px] font-extrabold uppercase tracking-wider px-1.5 py-0.5 rounded bg-white/60">
+                                      Your Choice
+                                    </span>
+                                  )}
+                                </div>
+                              );
+                            })}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })
+                ) : (
+                  <div className="py-10 text-center space-y-2">
+                    <p className="text-sm font-bold text-slate-600">Question details not saved for this older quiz entry.</p>
+                    <p className="text-xs text-slate-400">Future quizzes will automatically preserve all questions and option choices locally.</p>
+                  </div>
+                )}
+              </div>
+
+              <div className="pt-2 flex-shrink-0">
+                <button 
+                  onClick={() => setViewingQuiz(null)}
+                  className="w-full bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs py-3 rounded-xl transition-all cursor-pointer"
+                >
+                  Close Review
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* POPUP 2: "View All" History Modal */}
+      <AnimatePresence>
+        {showAllModal && (
+          <div className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4">
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="bg-white border border-slate-200 rounded-3xl p-6 shadow-2xl max-w-2xl w-full space-y-4 relative max-h-[85vh] flex flex-col"
+            >
+              <div className="flex justify-between items-center pb-3 border-b border-slate-100 flex-shrink-0">
+                <div>
+                  <h3 className="text-lg font-black text-slate-900 flex items-center gap-2">
+                    <HelpCircle className="text-indigo-600 w-5 h-5" />
+                    Complete Quiz History
+                  </h3>
+                  <p className="text-xs text-slate-400 font-medium">All generated diagnostic assessment logs.</p>
+                </div>
+                <button 
+                  onClick={() => setShowAllModal(false)}
+                  className="p-1.5 rounded-xl hover:bg-slate-100 text-slate-400 hover:text-slate-700 transition-all cursor-pointer"
+                >
+                  <X size={18} />
+                </button>
+              </div>
+
+              <div className="overflow-y-auto custom-scrollbar space-y-2.5 pr-1 flex-1">
+                {recentQuizzes.length > 0 ? (
+                  recentQuizzes.map((quizItem, idx) => {
+                    const currentId = quizItem.id || idx;
+                    return (
+                      <div 
+                        key={currentId}
+                        onClick={() => {
+                          setShowAllModal(false);
+                          setViewingQuiz(quizItem);
+                        }}
+                        className="flex items-center justify-between p-4 bg-slate-50/60 hover:bg-slate-100/80 border border-slate-200/60 rounded-2xl transition-all group cursor-pointer"
+                      >
+                        <div className="flex items-center gap-3.5">
+                          <div className="w-9 h-9 rounded-xl bg-indigo-50 border border-indigo-100/60 flex items-center justify-center text-indigo-600">
+                            <FileText size={16} />
+                          </div>
+                          <div>
+                            <h4 className="text-[13.5px] font-bold text-slate-800">
+                              {quizItem.name || quizItem.topic || "Untitled Quiz"}
+                            </h4>
+                            <div className="flex items-center gap-2 text-[11px] font-medium text-slate-400 mt-0.5">
+                              <span>{quizItem.questions || `${quizItem.total_questions || 0} Questions`}</span>
+                              <span>•</span>
+                              <span className="bg-slate-200/60 px-1.5 py-0.2 rounded text-[10px] text-slate-600 font-bold uppercase">
+                                {quizItem.level || "Medium"}
+                              </span>
+                              {quizItem.score !== undefined && (
+                                <>
+                                  <span>•</span>
+                                  <span className="text-emerald-600 font-bold">
+                                    Score: {quizItem.score}
+                                  </span>
+                                </>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center gap-3">
+                          <span className="text-[11px] font-bold text-slate-400">
+                            {quizItem.time || "Recently"}
+                          </span>
+                          <button 
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setShowAllModal(false);
+                              setViewingQuiz(quizItem);
+                            }}
+                            className="p-2 bg-white border border-slate-200 rounded-xl text-slate-400 hover:text-indigo-600 hover:border-indigo-200 shadow-sm transition-all group-hover:scale-105 cursor-pointer"
+                            title="View Quiz Answers Review"
+                          >
+                            <Eye size={15} />
+                          </button>
+                          <button 
+                            onClick={(e) => handleDeleteQuizHistory(e, currentId)}
+                            className="p-2 bg-white border border-slate-200 rounded-xl text-slate-400 hover:text-rose-600 hover:border-rose-200 shadow-sm transition-all group-hover:scale-105 cursor-pointer"
+                            title="Delete Quiz History Record"
+                          >
+                            <Trash2 size={15} />
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })
+                ) : (
+                  <p className="text-sm font-medium text-slate-400 py-6 text-center">No quiz history records available.</p>
+                )}
+              </div>
+
+              <div className="pt-2 flex-shrink-0">
+                <button 
+                  onClick={() => setShowAllModal(false)}
+                  className="w-full bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs py-3 rounded-xl transition-all cursor-pointer"
+                >
+                  Close Window
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
     </div>
   );
 }

@@ -1,5 +1,5 @@
 import React from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { 
   LayoutDashboard, 
   UploadCloud, 
@@ -9,11 +9,13 @@ import {
   Layers, 
   BarChart3,
   Calendar,
-  Trophy 
+  Trophy,
+  LogOut
 } from 'lucide-react';
 
 export default function Sidebar() {
   const location = useLocation();
+  const navigate = useNavigate();
 
   const menuItems = [
     { name: 'Dashboard', icon: <LayoutDashboard size={18} />, path: '/dashboard' },
@@ -27,9 +29,18 @@ export default function Sidebar() {
     { name: 'Profile', icon: <User size={18} />, path: '/profile' },
   ];
 
+  const handleLogout = () => {
+    // Auth Tokens and User details clear karein
+    localStorage.removeItem('token');
+    localStorage.removeItem('user');
+    
+    // Login Page par redirect karein
+    navigate('/login');
+  };
+
   return (
     <aside className="w-64 h-full flex-shrink-0 bg-white/60 backdrop-blur-2xl border-r border-indigo-100/40 flex flex-col justify-between p-6 relative z-30 shadow-[4px_0_24px_-10px_rgba(79,70,229,0.05)]">
-      <div className="space-y-10 relative z-10">
+      <div className="space-y-8 relative z-10">
         
         {/* Logo Branding */}
         <div className="flex items-center gap-3 px-3">
@@ -72,6 +83,19 @@ export default function Sidebar() {
             );
           })}
         </nav>
+      </div>
+
+      {/* Bottom Logout Button */}
+      <div className="pt-4 border-t border-indigo-100/60 relative z-10">
+        <button
+          onClick={handleLogout}
+          className="w-full flex items-center gap-3.5 px-4 py-3 rounded-2xl text-[14px] font-bold tracking-tight text-rose-500 hover:text-rose-600 hover:bg-rose-50 transition-all duration-200 group cursor-pointer"
+        >
+          <span className="transition-transform duration-200 group-hover:scale-105 group-hover:-translate-x-0.5">
+            <LogOut size={18} />
+          </span>
+          <span>Logout</span>
+        </button>
       </div>
     </aside>
   );

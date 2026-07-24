@@ -14,6 +14,7 @@ import Achievements from "./pages/Achievements";
 import Settings from "./pages/Settings"; 
 import Chat from "./pages/Chat";
 import Profile from "./pages/Profile";
+import Explorer from "./pages/Explorer"; // 👈 Explorer page import kiya
 import NotFound from "./pages/NotFound";
 
 // Layout & Route Wrappers
@@ -43,6 +44,7 @@ function App() {
               <Route path="/chat" element={<Chat />} /> 
               <Route path="/profile" element={<Profile />} />
               <Route path="/settings" element={<Settings />} /> 
+              <Route path="/explorer" element={<Explorer />} /> {/* 👈 Explorer Route add kiya */}
             </Route>
           </Route>
 

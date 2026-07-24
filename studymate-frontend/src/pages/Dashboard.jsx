@@ -18,9 +18,43 @@ export default function Dashboard() {
   const navigate = useNavigate();
   const [userName, setUserName] = useState("User");
   const [loading, setLoading] = useState(true);
+  const [selectedTimeRange, setSelectedTimeRange] = useState("today"); // Default "today" set kiya hai
 
-  // States for backend mapped data
-  const [statsData, setStatsData] = useState([]);
+  const [statsData, setStatsData] = useState([
+    {
+      label: "Recent Score",
+      value: "0%",
+      trend: "0 Quizzes taken",
+      trendType: "up",
+      type: "score",
+      icon: Target
+    },
+    {
+      label: "Task Progress",
+      value: "0%",
+      trend: "0 of 2 done",
+      trendType: "up",
+      type: "progress",
+      icon: CheckSquare
+    },
+    {
+      label: "Notes Created",
+      value: "1",
+      trend: "1 Flashcards",
+      trendType: "up",
+      type: "accuracy",
+      icon: FileText
+    },
+    {
+      label: "Achievements",
+      value: "2",
+      trend: "Earned badges",
+      trendType: "up",
+      type: "streak",
+      icon: Flame
+    }
+  ]);
+
   const [activitiesData, setActivitiesData] = useState([]);
   const [notesData, setNotesData] = useState([]);
   const [coursesData, setCoursesData] = useState([]);
@@ -47,7 +81,7 @@ export default function Dashboard() {
           }
         }
 
-        const response = await fetch("http://127.0.0.1:8000/dashboard/analytics", {
+        const response = await fetch(`http://127.0.0.1:8000/dashboard/analytics?range=${selectedTimeRange}`, {
           method: "GET",
           headers: {
             "Authorization": `Bearer ${token}`,
@@ -65,16 +99,13 @@ export default function Dashboard() {
         if (response.ok) {
           const data = await response.json();
 
-          // Safe extractors to prevent undefined errors
           const totalTasks = data.study_tasks?.total || 0;
           const completedTasks = data.study_tasks?.completed || 0;
           const completionPercentage = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
 
-          // Score Key Safe Check (checking common FastApi field names)
           const rawScore = data.average_quiz_score_percent ?? data.average_score ?? data.avg_score ?? 0;
           const quizzesCount = data.quizzes_taken ?? data.total_quizzes ?? 0;
 
-          // Added explicit icon components so StatsGrid can render them properly
           setStatsData([
             {
               label: "Recent Score",
@@ -110,7 +141,6 @@ export default function Dashboard() {
             }
           ]);
 
-          // Map Recent Activity Feed
           if (data.recent_activity && Array.isArray(data.recent_activity)) {
             const mappedActivities = data.recent_activity.map(act => ({
               title: act.title || "Study Activity",
@@ -119,11 +149,14 @@ export default function Dashboard() {
             setActivitiesData(mappedActivities);
           }
 
-          // Map Analytics Graph
+          // Recent files / uploaded PDFs set karne ke liye
+          if (data.recent_files && Array.isArray(data.recent_files)) {
+            setNotesData(data.recent_files);
+          }
+
           if (data.weekly_analytics && Array.isArray(data.weekly_analytics)) {
             setWeeklyProgress(data.weekly_analytics);
           }
-
         }
       } catch (error) {
         console.error("Error connecting dashboard to backend:", error);
@@ -133,7 +166,7 @@ export default function Dashboard() {
     };
 
     fetchDashboardAnalytics();
-  }, [navigate]);
+  }, [navigate, selectedTimeRange]);
 
   if (loading) {
     return (
@@ -156,11 +189,46 @@ export default function Dashboard() {
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-stretch w-full">
         <div className="lg:col-span-2 w-full">
-          <div className="bg-white/50 dark:bg-slate-900/50 backdrop-blur-md border border-slate-200/60 dark:border-slate-800 p-5 rounded-[24px] md:rounded-[32px] shadow-sm h-full">
-            <div className="flex justify-between items-center mb-4">
+          <div className="bg-white/50 dark:bg-slate-900/50 backdrop-blur-md border border-slate-200/60 dark:border-slate-800 p-5 rounded-[24px] md:rounded-[32px] shadow-sm h-full flex flex-col">
+            
+            {/* Header with Title and Interactive Filter Pills */}
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-4">
               <h2 className="text-lg font-black text-slate-900 dark:text-slate-100">Weekly Progress Graph</h2>
-              <span className="text-xs font-bold text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/50 px-2.5 py-1 rounded-lg">This Week</span>
+              
+              <div className="flex bg-slate-100 dark:bg-slate-800/80 p-1 rounded-full gap-1">
+                <button 
+                  onClick={() => setSelectedTimeRange("today")}
+                  className={`px-3 py-1 text-xs font-bold rounded-full transition-all ${
+                    selectedTimeRange === "today" 
+                      ? "bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 shadow-sm" 
+                      : "text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200"
+                  }`}
+                >
+                  Today
+                </button>
+                <button 
+                  onClick={() => setSelectedTimeRange("week")}
+                  className={`px-3 py-1 text-xs font-bold rounded-full transition-all ${
+                    selectedTimeRange === "week" 
+                      ? "bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 shadow-sm" 
+                      : "text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200"
+                  }`}
+                >
+                  This Week
+                </button>
+                <button 
+                  onClick={() => setSelectedTimeRange("month")}
+                  className={`px-3 py-1 text-xs font-bold rounded-full transition-all ${
+                    selectedTimeRange === "month" 
+                      ? "bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 shadow-sm" 
+                      : "text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200"
+                  }`}
+                >
+                  This Month
+                </button>
+              </div>
             </div>
+
             <AnalyticsChart chartData={weeklyProgress.length > 0 ? weeklyProgress : undefined} />
           </div>
         </div>

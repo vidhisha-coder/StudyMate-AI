@@ -8,6 +8,7 @@ import AnalyticsChart from '../components/dashboard/AnalyticsChart.jsx';
 import CourseCard from '../components/dashboard/CourseCard.jsx';
 import RecentFiles from '../components/dashboard/RecentFiles.jsx';
 import ActivityTimeline from '../components/dashboard/ActivityTimeline.jsx';
+import api from "../services/api";
 
 const containerVariants = {
   hidden: { opacity: 0 },
@@ -18,10 +19,44 @@ export default function Dashboard() {
   const navigate = useNavigate();
   const [userName, setUserName] = useState("User");
   const [loading, setLoading] = useState(true);
+  const [selectedTimeRange, setSelectedTimeRange] = useState("today");
 
   // States for backend mapped data
-  const [statsData, setStatsData] = useState([]);
-  const [activitiesData, setActivitiesData] = useState([]);
+const [statsData, setStatsData] = useState([
+  {
+    label: "Recent Score",
+    value: "0%",
+    trend: "0 Quizzes taken",
+    trendType: "up",
+    type: "score",
+    icon: Target,
+  },
+  {
+    label: "Task Progress",
+    value: "0%",
+    trend: "0 of 0 done",
+    trendType: "up",
+    type: "progress",
+    icon: CheckSquare,
+  },
+  {
+    label: "Notes Created",
+    value: "0",
+    trend: "0 Flashcards",
+    trendType: "up",
+    type: "accuracy",
+    icon: FileText,
+  },
+  {
+    label: "Achievements",
+    value: "0",
+    trend: "Earned badges",
+    trendType: "up",
+    type: "streak",
+    icon: Flame,
+  },
+]);
+    const [activitiesData, setActivitiesData] = useState([]);
   const [notesData, setNotesData] = useState([]);
   const [coursesData, setCoursesData] = useState([]);
   const [weeklyProgress, setWeeklyProgress] = useState([]);
@@ -53,6 +88,7 @@ export default function Dashboard() {
   );
 
   const data = response.data;
+  console.log("Dashboard API:", data);
 
   const totalTasks = data.study_tasks?.total || 0;
   const completedTasks = data.study_tasks?.completed || 0;
@@ -122,9 +158,8 @@ export default function Dashboard() {
     setNotesData(data.recent_files);
   }
 
-  if (Array.isArray(data.weekly_analytics)) {
-    setWeeklyProgress(data.weekly_analytics);
-  }
+ if (Array.isArray(data.weekly_progress)) {
+setWeeklyProgress(data.weekly_progress);  }
 } catch (err) {
   if (err.response?.status === 401) {
     localStorage.removeItem("token");

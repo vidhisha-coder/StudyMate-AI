@@ -2,10 +2,7 @@ from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
-# Database
 from app.database import Base, engine
-
-# Import Models
 import app.models
 
 # Routers
@@ -23,10 +20,9 @@ from app.api.profile import router as profile_router
 from app.api.settings import router as settings_router
 from app.api.forget_password import router as forgot_password_router
 
-# Create Database Tables
+# Create database tables
 Base.metadata.create_all(bind=engine)
 
-# FastAPI App
 app = FastAPI(
     title="StudyMate AI Backend",
     description="AI-powered Personalized Learning Assistant",
@@ -36,15 +32,13 @@ app = FastAPI(
 # CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Change in production
+    allow_origins=["*"],      # Change in production
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-
-# ---------------- Friendly error for missing config (e.g. GROQ_API_KEY) ---------------- #
-
+# Runtime error handler
 @app.exception_handler(RuntimeError)
 async def runtime_error_handler(request: Request, exc: RuntimeError):
     return JSONResponse(
@@ -52,14 +46,12 @@ async def runtime_error_handler(request: Request, exc: RuntimeError):
         content={"detail": str(exc)},
     )
 
-# ---------------- Root ---------------- #
-
+# Root
 @app.get("/")
 def root():
     return {
         "message": "🚀 StudyMate AI Backend Running Successfully"
     }
-
 
 @app.get("/health")
 def health():
@@ -67,9 +59,7 @@ def health():
         "status": "healthy"
     }
 
-
-# ---------------- Register Routers ---------------- #
-
+# Register Routers
 app.include_router(auth_router)
 app.include_router(ai_router)
 app.include_router(upload_router)

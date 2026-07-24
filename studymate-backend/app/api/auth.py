@@ -17,17 +17,15 @@ from app.auth import (
     get_current_user
 )
 
-
 router = APIRouter(
     prefix="/api/auth",
     tags=["Authentication"]
 )
 
 
-
-# ==========================
+# =====================================================
 # SIGNUP
-# ==========================
+# =====================================================
 
 @router.post("/signup")
 def signup(
@@ -39,13 +37,11 @@ def signup(
         User.email == user.email
     ).first()
 
-
     if existing_user:
         raise HTTPException(
             status_code=400,
             detail="Email already registered"
         )
-
 
     new_user = User(
         name=user.name,
@@ -53,22 +49,18 @@ def signup(
         password=hash_password(user.password)
     )
 
-
     db.add(new_user)
     db.commit()
     db.refresh(new_user)
-
 
     return {
         "message": "User created successfully"
     }
 
 
-
-
-# ==========================
-# LOGIN (OAuth2 Compatible)
-# ==========================
+# =====================================================
+# LOGIN
+# =====================================================
 
 @router.post("/login", response_model=Token)
 def login(
@@ -76,11 +68,9 @@ def login(
     db: Session = Depends(get_db)
 ):
 
-    # Swagger sends email as username
     db_user = db.query(User).filter(
         User.email == form_data.username
     ).first()
-
 
     if not db_user:
         raise HTTPException(
@@ -88,49 +78,51 @@ def login(
             detail="User not found"
         )
 
-
-    # Check password
     if not verify_password(
         form_data.password,
         db_user.password
     ):
-
         raise HTTPException(
             status_code=401,
             detail="Incorrect password"
         )
 
-
-    # Create JWT Token
     token = create_access_token(
         {
             "sub": db_user.email
         }
     )
 
-
     return {
-
         "access_token": token,
-        "token_type": "bearer"
-
+        "token_type": "bearer",
+        "name": db_user.name,
+        "email": db_user.email
     }
 
 
-
-
-# ==========================
-# PROTECTED ROUTE
-# ==========================
+# =====================================================
+# CURRENT USER
+# =====================================================
 
 @router.get("/me")
 def get_profile(
-    email: str = Depends(get_current_user)
+    email: str = Depends(get_current_user),
+    db: Session = Depends(get_db)
 ):
 
+    user = db.query(User).filter(
+        User.email == email
+    ).first()
+
+    if not user:
+        raise HTTPException(
+            status_code=404,
+            detail="User not found"
+        )
+
     return {
-
-        "email": email,
-        "message": "Protected route accessed successfully"
-
+        "id": user.id,
+        "name": user.name,
+        "email": user.email
     }

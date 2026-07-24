@@ -1,7 +1,10 @@
 import React, { useState } from "react";
 import { motion } from "framer-motion";
 import { HelpCircle, Sparkles, ChevronDown, CheckSquare, Square, FileText, ArrowRight, Eye, CheckCircle2, Award, RotateCcw, Send } from "lucide-react";
-import { generateQuiz } from "../services/quizService";
+import {
+  generateQuiz,
+  submitQuiz,
+} from "../services/quizService";
 
 export default function Quiz() {
   // Form Configuration States
@@ -86,23 +89,47 @@ export default function Quiz() {
   };
 
   // Calculate and Submit Quiz
-  const handleSubmitQuiz = () => {
-    if (Object.keys(userAnswers).length < quiz.length) {
-      const confirmSubmit = window.confirm("Aapne saare questions answer nahi kiye hain. Kya aap fir bhi submit karna chahte ho?");
-      if (!confirmSubmit) return;
-    }
+  const handleSubmitQuiz = async () => {
+  if (Object.keys(userAnswers).length < quiz.length) {
+    const confirmSubmit = window.confirm(
+      "You haven't answered all questions. Submit anyway?"
+    );
 
-    let calculatedScore = 0;
-    quiz.forEach((q, idx) => {
-      const correctAnswer = q.correctAnswer || q.answer;
-      if (userAnswers[idx] && correctAnswer && userAnswers[idx] === correctAnswer) {
-        calculatedScore += 1;
-      }
+    if (!confirmSubmit) return;
+  }
+
+  let calculatedScore = 0;
+
+  quiz.forEach((q, idx) => {
+    const correctAnswer = q.correctAnswer || q.answer;
+
+    if (
+      userAnswers[idx] &&
+      correctAnswer &&
+      userAnswers[idx] === correctAnswer
+    ) {
+      calculatedScore++;
+    }
+  });
+
+  try {
+    await submitQuiz({
+      topic: selectedNotes,
+      score: calculatedScore,
+      total_questions: quiz.length,
     });
 
     setScore(calculatedScore);
-    setSubmitted(true);
-  };
+setSubmitted(true);
+
+window.dispatchEvent(new Event("quizSubmitted"));
+
+alert("✅ Quiz submitted successfully!");
+  } catch (err) {
+    console.error(err);
+    alert("Failed to save quiz result.");
+  }
+};
 
   // Mock Recent Quizzes History
   const recentQuizzes = [

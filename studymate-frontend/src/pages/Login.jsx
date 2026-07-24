@@ -14,29 +14,56 @@ function Login() {
   const navigate = useNavigate();
   const { login } = useAuth();
 
-  const handleLogin = async (e) => {
-    e.preventDefault();
-    setLoading(true);
+ const handleLogin = async (e) => {
+  e.preventDefault();
+  setLoading(true);
 
-    try {
-      const response = await loginApiService(email, password);
-      const userDisplayName = response.name || response.user?.name || email.split("@")[0];
+  try {
+    // Login API
+    const response = await loginApiService(email, password);
 
-      localStorage.setItem("user", JSON.stringify({ name: userDisplayName, email }));
+    console.log("LOGIN RESPONSE:", response);
 
-      login(response.access_token);
-      navigate("/dashboard");
+    // Save token
+    login(response.access_token);
 
-    } catch (error) {
-      console.error(error);
-      alert(
-        error.response?.data?.detail ||
-        "Invalid Email or Password"
-      );
-    } finally {
-      setLoading(false);
+    // Fetch actual logged-in user
+    const meResponse = await fetch("http://127.0.0.1:8000/api/auth/me", {
+      headers: {
+        Authorization: `Bearer ${response.access_token}`,
+      },
+    });
+
+    if (!meResponse.ok) {
+      throw new Error("Failed to fetch user profile");
     }
-  };
+
+    const me = await meResponse.json();
+
+    console.log("ME RESPONSE:", me);
+
+    // Save correct user details
+    localStorage.setItem(
+      "user",
+      JSON.stringify({
+        name: me.name,
+        email: me.email,
+      })
+    );
+
+    navigate("/dashboard");
+  } catch (error) {
+    console.error(error);
+
+    alert(
+      error.response?.data?.detail ||
+      error.message ||
+      "Invalid Email or Password"
+    );
+  } finally {
+    setLoading(false);
+  }
+};
 
   return (
     <div className="min-h-screen w-full flex items-center justify-center bg-gradient-to-br from-slate-900 via-indigo-950 to-slate-900 px-4 py-8 relative overflow-hidden">

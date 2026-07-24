@@ -53,7 +53,7 @@ This project was developed as part of an internship group project, focusing on A
 
 ---
 
-### 🌐 User Experience
+## 🌐 User Experience
 
 - 📱 Fully Responsive Interface
 - ⚡ Fast & Modern UI
@@ -63,7 +63,7 @@ This project was developed as part of an internship group project, focusing on A
 
 ## 🛠 Tech Stack
 
-## Frontend
+### Frontend
 
 - React.js
 - Vite
@@ -72,13 +72,74 @@ This project was developed as part of an internship group project, focusing on A
 - Framer Motion
 - Axios
 
-## Backend
+### Backend
 
 - FastAPI
+- Python
 
 ### AI
-- OpenAI API
+
+- Google Gemini API
+
+### Database
+
+- SQLite
 
 ### Deployment
+
 - Docker
-- AWS App Runner
+- Docker Compose
+- AWS EC2
+
+---
+
+## 🚀 Live Deployment
+
+The application is deployed on **AWS EC2** using **Docker Compose**.
+
+### 🌐 Live Application
+
+**Frontend:**  
+http://43.204.211.86:5173
+
+**Backend API (Swagger Docs):**  
+http://43.204.211.86:8000/docs
+
+**Note:** The application is hosted on an AWS EC2 instance for demonstration purposes. Availability depends on the running state of the EC2 instance.
+
+---
+
+## ⚙️ Deployment Architecture
+
+```text
+                User
+                  │
+                  ▼
+      React + Vite Frontend
+                  │
+        HTTP REST API Calls
+                  │
+                  ▼
+       FastAPI Backend (Docker)
+                  │
+      Google Gemini API Integration
+                  │
+                  ▼
+             SQLite Database
+```
+
+---
+
+## 🐳 Running with Docker
+
+```bash
+docker compose up --build
+```
+
+---
+
+## 👩‍💻 Team
+
+**Project Name:** StudyMate AI
+
+Developed as part of the **AICTE IBM SkillsBuild Gen AI & Cloud Computing Internship**.

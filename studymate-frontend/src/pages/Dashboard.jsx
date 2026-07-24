@@ -18,43 +18,9 @@ export default function Dashboard() {
   const navigate = useNavigate();
   const [userName, setUserName] = useState("User");
   const [loading, setLoading] = useState(true);
-  const [selectedTimeRange, setSelectedTimeRange] = useState("today"); // Default "today" set kiya hai
 
-  const [statsData, setStatsData] = useState([
-    {
-      label: "Recent Score",
-      value: "0%",
-      trend: "0 Quizzes taken",
-      trendType: "up",
-      type: "score",
-      icon: Target
-    },
-    {
-      label: "Task Progress",
-      value: "0%",
-      trend: "0 of 2 done",
-      trendType: "up",
-      type: "progress",
-      icon: CheckSquare
-    },
-    {
-      label: "Notes Created",
-      value: "1",
-      trend: "1 Flashcards",
-      trendType: "up",
-      type: "accuracy",
-      icon: FileText
-    },
-    {
-      label: "Achievements",
-      value: "2",
-      trend: "Earned badges",
-      trendType: "up",
-      type: "streak",
-      icon: Flame
-    }
-  ]);
-
+  // States for backend mapped data
+  const [statsData, setStatsData] = useState([]);
   const [activitiesData, setActivitiesData] = useState([]);
   const [notesData, setNotesData] = useState([]);
   const [coursesData, setCoursesData] = useState([]);
@@ -81,13 +47,94 @@ export default function Dashboard() {
           }
         }
 
-        const response = await fetch(`http://127.0.0.1:8000/dashboard/analytics?range=${selectedTimeRange}`, {
-          method: "GET",
-          headers: {
-            "Authorization": `Bearer ${token}`,
-            "Content-Type": "application/json"
-          }
-        });
+       try {
+  const response = await api.get(
+    `/dashboard/analytics?range=${selectedTimeRange}`
+  );
+
+  const data = response.data;
+
+  const totalTasks = data.study_tasks?.total || 0;
+  const completedTasks = data.study_tasks?.completed || 0;
+  const completionPercentage =
+    totalTasks > 0
+      ? Math.round((completedTasks / totalTasks) * 100)
+      : 0;
+
+  const rawScore =
+    data.average_quiz_score_percent ??
+    data.average_score ??
+    data.avg_score ??
+    0;
+
+  const quizzesCount =
+    data.quizzes_taken ??
+    data.total_quizzes ??
+    0;
+
+  setStatsData([
+    {
+      label: "Recent Score",
+      value: `${rawScore}%`,
+      trend: `${quizzesCount} Quizzes taken`,
+      trendType: "up",
+      type: "score",
+      icon: Target,
+    },
+    {
+      label: "Task Progress",
+      value: `${completionPercentage}%`,
+      trend: `${completedTasks} of ${totalTasks} done`,
+      trendType: "up",
+      type: "progress",
+      icon: CheckSquare,
+    },
+    {
+      label: "Notes Created",
+      value: `${data.summaries_created ?? 0}`,
+      trend: `${data.flashcards_created ?? 0} Flashcards`,
+      trendType: "up",
+      type: "accuracy",
+      icon: FileText,
+    },
+    {
+      label: "Achievements",
+      value: `${data.achievements_earned ?? 0}`,
+      trend: "Earned badges",
+      trendType: "up",
+      type: "streak",
+      icon: Flame,
+    },
+  ]);
+
+  if (Array.isArray(data.recent_activity)) {
+    setActivitiesData(
+      data.recent_activity.map((act) => ({
+        title: act.title || "Study Activity",
+        time: act.created_at
+          ? new Date(act.created_at).toLocaleDateString()
+          : "Recently",
+      }))
+    );
+  }
+
+  if (Array.isArray(data.recent_files)) {
+    setNotesData(data.recent_files);
+  }
+
+  if (Array.isArray(data.weekly_analytics)) {
+    setWeeklyProgress(data.weekly_analytics);
+  }
+} catch (err) {
+  if (err.response?.status === 401) {
+    localStorage.removeItem("token");
+    localStorage.removeItem("user");
+    navigate("/login");
+    return;
+  }
+
+  console.error("Error connecting dashboard:", err);
+}
 
         if (response.status === 401) {
           localStorage.removeItem("token");
@@ -106,6 +153,7 @@ export default function Dashboard() {
           const rawScore = data.average_quiz_score_percent ?? data.average_score ?? data.avg_score ?? 0;
           const quizzesCount = data.quizzes_taken ?? data.total_quizzes ?? 0;
 
+          // Added explicit icon components so StatsGrid can render them properly
           setStatsData([
             {
               label: "Recent Score",
@@ -149,11 +197,7 @@ export default function Dashboard() {
             setActivitiesData(mappedActivities);
           }
 
-          // Recent files / uploaded PDFs set karne ke liye
-          if (data.recent_files && Array.isArray(data.recent_files)) {
-            setNotesData(data.recent_files);
-          }
-
+          // Map Analytics Graph
           if (data.weekly_analytics && Array.isArray(data.weekly_analytics)) {
             setWeeklyProgress(data.weekly_analytics);
           }

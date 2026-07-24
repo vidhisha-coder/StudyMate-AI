@@ -1,5 +1,6 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 
 # Database
 from app.database import Base, engine
@@ -40,6 +41,16 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+# ---------------- Friendly error for missing config (e.g. GROQ_API_KEY) ---------------- #
+
+@app.exception_handler(RuntimeError)
+async def runtime_error_handler(request: Request, exc: RuntimeError):
+    return JSONResponse(
+        status_code=503,
+        content={"detail": str(exc)},
+    )
 
 # ---------------- Root ---------------- #
 

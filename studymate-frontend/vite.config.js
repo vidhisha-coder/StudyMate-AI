@@ -7,4 +7,11 @@ export default defineConfig({
     react(),
     tailwindcss(),
   ],
+  preview: {
+    host: true,
+    port: 4173,
+    // Allows the container to be reached via its AWS/App Runner hostname
+    // or any custom domain, instead of only "localhost".
+    allowedHosts: true,
+  },
 })

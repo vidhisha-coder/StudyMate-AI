@@ -28,8 +28,9 @@ function Login() {
     login(response.access_token);
 
     // Fetch actual logged-in user
-    const meResponse = await fetch("http://127.0.0.1:8000/api/auth/me", {
-      headers: {
+const meResponse = await fetch(
+  `${import.meta.env.VITE_API_URL}/api/auth/me`,
+  {      headers: {
         Authorization: `Bearer ${response.access_token}`,
       },
     });

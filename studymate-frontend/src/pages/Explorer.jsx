@@ -12,8 +12,9 @@ export default function Explorer() {
     const fetchAllFiles = async () => {
       try {
         const token = localStorage.getItem("token");
-        const res = await fetch("http://127.0.0.1:8000/user/files", {
-          headers: { "Authorization": `Bearer ${token}` }
+const res = await fetch(
+  `${import.meta.env.VITE_API_URL}/user/files`,
+  {          headers: { "Authorization": `Bearer ${token}` }
         });
         if (res.ok) {
           const data = await res.json();
